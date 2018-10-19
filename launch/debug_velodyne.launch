@@ -1,0 +1,16 @@
+<launch>
+
+  <arg name="bag" doc="absolute path to bag to be replayed"/>
+
+  <node pkg="infuse_debug_tools" name="asn1_bitstream_to_point_cloud" type="asn1_bitstream_to_point_cloud_node" output="screen">
+
+    <param name="publish_asn1_time" value="false" />
+    <param name="topics_to_connect" value="/velodyne/point_cloud" />
+    
+  </node>
+
+  <node pkg="rosbag" name="rosbag_play" type="play" output="screen" args="-d 5 $(arg bag)" />
+
+  <node pkg="rviz" name="rviz" type="rviz" args="-d $(find infuse_debug_tools)/rviz/debug_velodyne.rviz"/>
+
+</launch>

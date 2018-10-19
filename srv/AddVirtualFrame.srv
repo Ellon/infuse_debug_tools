@@ -1,0 +1,6 @@
+string frame_string  # Frame as a string in one of the following formats:
+                     #   parent_frame_id child_frame_id x y z roll pitch yaw
+                     #   parent_frame_id child_frame_id x y z qw qx qy qz
+---
+bool success    # indicate successful run
+string message  # informational, e.g. for error messages

@@ -14,8 +14,10 @@
   <depend>roscpp</depend>
   <depend>std_msgs</depend>
   <depend>infuse_msgs</depend>
-  <export>
-    <nodelet plugin="${prefix}/nodelet_plugins.xml"/>
-  </export>
+  <depend>tf2</depend>
+
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
 </package>
 

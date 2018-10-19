@@ -1,6 +1,6 @@
 <launch>
 
-  <arg name="bag" doc="path to bag to be replayed"/>
+  <arg name="bag" doc="absolute path to bag to be replayed"/>
 
   <node pkg="infuse_debug_tools" name="asn1_bitstream_to_tf" type="asn1_bitstream_to_tf_node" output="screen">
 

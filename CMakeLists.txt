@@ -54,3 +54,18 @@ target_link_libraries(asn1_bitstream_to_tf_node
 	infuse_asn1_conversions::base_conversions
 	# infuse_asn1_conversions::pcl_conversions
 )
+
+## asn1_bitstream_to_point_cloud
+add_executable(asn1_bitstream_to_point_cloud_node src/asn1_bitstream_to_point_cloud.cpp)
+target_include_directories(asn1_bitstream_to_point_cloud_node
+	PUBLIC
+	${catkin_INCLUDE_DIRS}
+	${PCL_INCLUDE_DIRS}
+)
+target_link_libraries(asn1_bitstream_to_point_cloud_node
+	${catkin_LIBRARIES}
+	${PCL_IO_LIBRARIES}
+	infuse_asn1_types::infuse_asn1_types
+	infuse_asn1_conversions::base_conversions
+	infuse_asn1_conversions::pcl_conversions
+)

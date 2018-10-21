@@ -29,62 +29,23 @@ public:
   bool connect_pose(infuse_debug_tools::ConnectTopic::Request  &req,
                     infuse_debug_tools::ConnectTopic::Response &res);
 
-  bool add_virtual_frame(infuse_debug_tools::AddVirtualFrame::Request  &req,
-                         infuse_debug_tools::AddVirtualFrame::Response &res);
-
   void pose_callback(const infuse_msgs::asn1_bitstream::Ptr& msg);
-
-private:
-  geometry_msgs::TransformStamped parse_frame(const std::vector<std::string> &vstrings);
 
 private:
   ros::NodeHandle nh_;
   ros::NodeHandle private_nh_;
   ros::ServiceServer connect_pose_srv_;
-  ros::ServiceServer add_virtual_frame_srv_;
   std::map<std::string,ros::Subscriber> sub_map_;
   tf2_ros::TransformBroadcaster tf_broadcaster_;
-  tf2_ros::StaticTransformBroadcaster static_tf_broadcaster_;
 };
 
 
 ASN1BitstreamToTf::ASN1BitstreamToTf() :
   private_nh_{"~"},
-  connect_pose_srv_{private_nh_.advertiseService("connect_pose", &ASN1BitstreamToTf::connect_pose, this)},
-  add_virtual_frame_srv_{private_nh_.advertiseService("add_virtual_frame", &ASN1BitstreamToTf::add_virtual_frame, this)}
+  connect_pose_srv_{private_nh_.advertiseService("connect_pose", &ASN1BitstreamToTf::connect_pose, this)}
 {
   private_nh_.param<bool>("publish_asn1_time", publish_asn1_time_, false);
 
-  {
-    std::vector<std::string> virtual_frames;
-    if (private_nh_.getParam("virtual_frames", virtual_frames)) {
-      for(const auto & virtual_frame : virtual_frames ) {
-        // Split strings into a vector
-        std::vector<std::string> vstrings;
-        {
-          std::stringstream ss(virtual_frame);
-          std::istream_iterator<std::string> begin(ss), eos; // end-of-stream
-          vstrings.assign(begin, eos);
-        }
-
-        // Test against wrong size
-        if (vstrings.size() != 8 and vstrings.size() != 9) {
-          std::stringstream ss;
-          ss << "Error: parameter \"" << private_nh_.resolveName("virtual_frame") << "\" has " << vstrings.size()
-             << " elements, but it must have 8 or 9 elements!\n" 
-             << "Please use one of the following formats:\n"
-             << "       parent_frame_id child_fram_id x y z roll pitch yaw\n"
-             << "       parent_frame_id child_fram_id x y z qw qx qy qz";
-          ROS_INFO_STREAM(ss.str());
-          // throw std::runtime_error(ss.str());
-        } else {
-          geometry_msgs::TransformStamped msg{parse_frame(vstrings)};
-          static_tf_broadcaster_.sendTransform(msg);
-          ROS_INFO_STREAM("Publishing static virtual_frame \"" << virtual_frame << "\"");
-        }        
-      }
-    }
-  }
   {
     std::string topics_to_connect;
     if (private_nh_.getParam("topics_to_connect", topics_to_connect)) {
@@ -105,78 +66,6 @@ ASN1BitstreamToTf::ASN1BitstreamToTf() :
         }
       }
     }
-  }
-}
-
-geometry_msgs::TransformStamped ASN1BitstreamToTf::parse_frame(const std::vector<std::string> &vstrings) {
-  geometry_msgs::TransformStamped msg;
-  msg.header.frame_id = vstrings[0];
-  msg.child_frame_id = vstrings[1];
-
-  std::vector<double> vdoubles;
-  std::transform(vstrings.begin()+2, vstrings.end(), std::back_inserter(vdoubles), [](const auto& val){
-    return std::stod(val);
-  });
-
-  msg.transform.translation.x = vdoubles[0];
-  msg.transform.translation.y = vdoubles[1];
-  msg.transform.translation.z = vdoubles[2];
-  if (vdoubles.size() == 6) {
-    tf2::Quaternion quat;
-    quat.setRPY(vdoubles[3], vdoubles[4], vdoubles[5]);
-    msg.transform.rotation.w = quat.w();
-    msg.transform.rotation.x = quat.x();
-    msg.transform.rotation.y = quat.y();
-    msg.transform.rotation.z = quat.z();
-  } else {
-    msg.transform.rotation.w = vdoubles[3];
-    msg.transform.rotation.x = vdoubles[4];
-    msg.transform.rotation.y = vdoubles[5];
-    msg.transform.rotation.z = vdoubles[6];
-  }
-
-  return msg;
-}
-
-bool ASN1BitstreamToTf::add_virtual_frame(infuse_debug_tools::AddVirtualFrame::Request  &req,
-                                          infuse_debug_tools::AddVirtualFrame::Response &res)
-{
-  try {
-    // Split strings into a vector
-    std::vector<std::string> vstrings;
-    {
-      std::stringstream ss(req.frame_string);
-      std::istream_iterator<std::string> begin(ss), eos; // end-of-stream
-      vstrings.assign(begin, eos);
-    }
-
-    // Test against wrong size
-    if (vstrings.empty() or (vstrings.size() != 8 and vstrings.size() != 9)) {
-      std::stringstream ss;
-      ss << "Invalid frame string \"" << req.frame_string << "\"\n"
-         << "Please use one of the following formats: \n"
-         << "  parent_frame_id child_fram_id x y z roll pitch yaw\n"
-         << "  parent_frame_id child_fram_id x y z qw qx qy qz";
-      ROS_INFO_STREAM(ss.str());
-      res.success = false;
-      res.message = ss.str();
-      return false;
-    }
-
-    geometry_msgs::TransformStamped msg{parse_frame(vstrings)};
-
-    static_tf_broadcaster_.sendTransform(msg);
-
-    res.success = true;
-    return true;
-
-  } catch (...) {
-    std::stringstream ss;
-    ss << "Unknown exception when adding a virtual frame";
-    ROS_INFO_STREAM(ss.str());
-    res.success = false;
-    res.message = ss.str();
-    return false;
   }
 }
 

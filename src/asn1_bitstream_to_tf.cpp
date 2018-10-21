@@ -46,24 +46,22 @@ ASN1BitstreamToTf::ASN1BitstreamToTf() :
 {
   private_nh_.param<bool>("publish_asn1_time", publish_asn1_time_, false);
 
-  {
-    std::string topics_to_connect;
-    if (private_nh_.getParam("topics_to_connect", topics_to_connect)) {
-      // Split strings into a vector
-      std::vector<std::string> topics;
-      {
-        std::stringstream ss(topics_to_connect);
-        std::istream_iterator<std::string> begin(ss), eos; // end-of-stream
-        topics.assign(begin, eos);
-      }
-      // Connect to topics
-      for (const auto & topic : topics) {
-        try {
-          sub_map_[topic] = nh_.subscribe(topic, 1000, &ASN1BitstreamToTf::pose_callback, this);
-          ROS_INFO_STREAM("Connected to topic " << topic);
-        } catch (...) {
-          ROS_INFO_STREAM("ERROR: Could not connect to topic " << topic);
-        }
+  std::string topics_to_connect;
+  if (private_nh_.getParam("topics_to_connect", topics_to_connect)) {
+    // Split strings into a vector
+    std::vector<std::string> topics;
+    {
+      std::stringstream ss(topics_to_connect);
+      std::istream_iterator<std::string> begin(ss), eos; // end-of-stream
+      topics.assign(begin, eos);
+    }
+    // Connect to topics
+    for (const auto & topic : topics) {
+      try {
+        sub_map_[topic] = nh_.subscribe(topic, 1000, &ASN1BitstreamToTf::pose_callback, this);
+        ROS_INFO_STREAM("Connected to topic " << topic);
+      } catch (...) {
+        ROS_INFO_STREAM("ERROR: Could not connect to topic " << topic);
       }
     }
   }

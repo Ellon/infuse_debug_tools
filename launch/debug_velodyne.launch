@@ -5,9 +5,14 @@
   <node pkg="infuse_debug_tools" name="asn1_bitstream_to_point_cloud" type="asn1_bitstream_to_point_cloud_node" output="screen">
 
     <param name="publish_asn1_time" value="false" />
+    <param name="publish_poses" value="true" />
     <param name="topics_to_connect" value="/velodyne/point_cloud" />
     
   </node>
+
+  <node pkg="tf2_ros" name="LAASParking_broadcaster" type="static_transform_publisher" output="screen" args="-745.395003 375.152327 -1.494203 0 0 0 LocalTerrainFrame LAASParking" />  
+
+  <node pkg="tf2_ros" name="RoverBodyFrame_RoverBaseFrame_fix" type="static_transform_publisher" output="screen" args="0 0 0 0 0 0 RoverBodyFrame RoverBaseFrame" />  
 
   <node pkg="rosbag" name="rosbag_play" type="play" output="screen" args="-d 5 $(arg bag)" />
 

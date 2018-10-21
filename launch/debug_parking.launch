@@ -5,14 +5,13 @@
   <node pkg="infuse_debug_tools" name="asn1_bitstream_to_tf" type="asn1_bitstream_to_tf_node" output="screen">
 
     <param name="publish_asn1_time" value="false" />
-    <param name="virtual_frame" value="LocalTerrainFrame LAASParking -745.395003 375.152327 -1.494203 0 0 0" />
-    <rosparam param="virtual_frames">
-        ['LocalTerrainFrame LAASParking -745.395003 375.152327 -1.494203 0 0 0',
-         'RoverBodyFrame RoverBaseFrame 0 0 0 0 0 0']
-    </rosparam>
     <param name="topics_to_connect" value="/pose_robot_pom /infuse_crisp/sensorPoseOutput/Velodyne" />
     
   </node>
+
+  <node pkg="tf2_ros" name="LAASParking_broadcaster" type="static_transform_publisher" output="screen" args="-745.395003 375.152327 -1.494203 0 0 0 LocalTerrainFrame LAASParking" />  
+
+  <node pkg="tf2_ros" name="RoverBodyFrame_RoverBaseFrame_fix" type="static_transform_publisher" output="screen" args="0 0 0 0 0 0 RoverBodyFrame RoverBaseFrame" />  
 
   <node pkg="rosbag" name="rosbag_play" type="play" output="screen" args="-d 5 $(arg bag)" />
 

@@ -5,23 +5,24 @@
 
 #include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
-// #include <tf2_ros/static_transform_broadcaster.h>
-// #include <geometry_msgs/TransformStamped.h>
 
 #include <infuse_msgs/asn1_bitstream.h>
 #include <infuse_asn1_types/Pointcloud.h>
-// #include <infuse_asn1_types/TransformWithCovariance.h>
-// #include <infuse_asn1_conversions/asn1_base_conversions.hpp>
 #include <infuse_asn1_conversions/asn1_pcl_conversions.hpp>
 
 #include <infuse_debug_tools/ConnectTopic.h>
-// #include <infuse_debug_tools/AddVirtualFrame.h>
 
 #include <pcl_ros/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
 
-class ASN1BitstreamToPointCloud
+#include "asn1_bitstream_transform_processer.hpp"
+
+
+namespace infuse_debug_tools
+{
+
+class ASN1BitstreamToPointCloud : ASN1BitstreamTransformProcesser
 {
 public:
   using PointCloud = pcl::PointCloud<pcl::PointXYZI>;
@@ -45,7 +46,8 @@ private:
   std::map<std::string,ros::Publisher> pub_map_;
   tf2_ros::TransformBroadcaster tf_broadcaster_;
 
-  bool publish_asn1_time_;
+  bool publish_poses_;
+
   std::unique_ptr<asn1SccPointcloud> asn1_pointcloud_ptr_;
 };
 
@@ -53,9 +55,11 @@ private:
 ASN1BitstreamToPointCloud::ASN1BitstreamToPointCloud() :
   private_nh_{"~"},
   connect_point_cloud_srv_{private_nh_.advertiseService("connect_point_cloud", &ASN1BitstreamToPointCloud::connect_point_cloud, this)},
-  publish_asn1_time_{private_nh_.param<bool>("publish_asn1_time", false)},
+  publish_poses_{private_nh_.param<bool>("publish_poses", false)},
   asn1_pointcloud_ptr_{std::make_unique<asn1SccPointcloud>()}
 {
+  private_nh_.param<bool>("publish_asn1_time", publish_asn1_time_, false);
+
   {
     std::string topics_to_connect;
     if (private_nh_.getParam("topics_to_connect", topics_to_connect)) {
@@ -133,17 +137,49 @@ void ASN1BitstreamToPointCloud::point_cloud_callback(const infuse_msgs::asn1_bit
   static PointCloud msg_cloud;
   fromASN1SCC(*asn1_pointcloud_ptr_, msg_cloud);
 
+  if (publish_poses_) {
+
+    std::array<asn1SccTransformWithCovariance, 2> transforms = {
+      asn1_pointcloud_ptr_->metadata.pose_fixedFrame_robotFrame,
+      asn1_pointcloud_ptr_->metadata.pose_robotFrame_sensorFrame
+    };
+
+    for (const auto & asn1Transform : transforms) {
+      // Process pose or delta pose
+      geometry_msgs::TransformStamped transformStamped;
+      try {
+        auto is_asn1_time_equal = [](const asn1SccTime& t1, const asn1SccTime& t2){
+          return (t1.microseconds == t2.microseconds) and (t1.usecPerSec == t2.usecPerSec);
+        };
+
+        if(is_asn1_time_equal(asn1Transform.metadata.parentTime, asn1Transform.metadata.childTime)) {
+          transformStamped = process_pose(asn1Transform);
+        } else {
+          transformStamped = process_delta_pose(asn1Transform);
+        }
+      } catch (const char *exception) {
+        ROS_INFO("%s", exception);
+      }
+
+      if (not publish_asn1_time_)
+        transformStamped.header.stamp = cb_time;
+      // Publish transform
+      tf_broadcaster_.sendTransform(transformStamped);
+    }
+  }
+
   // Publish cloud
   pcl_conversions::toPCL(cb_time, msg_cloud.header.stamp);
   pub.publish(msg_cloud.makeShared());
 }
 
+} // namespace infuse_debug_tools
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "asn1_bitstream_to_tf");
 
-  ASN1BitstreamToPointCloud asn1_bitstream_to_point_cloud;
+  infuse_debug_tools::ASN1BitstreamToPointCloud asn1_bitstream_to_point_cloud;
 
   ros::spin();
 

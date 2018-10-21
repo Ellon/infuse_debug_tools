@@ -77,6 +77,7 @@ target_include_directories(asn1_bitstream_to_point_cloud_node
 	${PCL_INCLUDE_DIRS}
 )
 target_link_libraries(asn1_bitstream_to_point_cloud_node
+	infuse_debug_tools
 	${catkin_LIBRARIES}
 	${PCL_IO_LIBRARIES}
 	infuse_asn1_types::infuse_asn1_types

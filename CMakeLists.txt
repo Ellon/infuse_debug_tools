@@ -24,6 +24,19 @@ generate_messages(
 ## Declare a catkin package
 catkin_package()
 
+add_library(infuse_debug_tools 
+	src/asn1_bitstream_transform_processer.cpp
+)
+target_include_directories(infuse_debug_tools
+	PUBLIC
+	${catkin_INCLUDE_DIRS}
+)
+target_link_libraries(infuse_debug_tools
+	${catkin_LIBRARIES}
+	infuse_asn1_types::infuse_asn1_types
+	infuse_asn1_conversions::base_conversions
+)
+
 ## asn1_bitstream_to_pcd_converter
 add_executable(asn1_bitstream_to_pcd_converter_node
 	src/asn1_bitstream_to_pcd_converter.cpp

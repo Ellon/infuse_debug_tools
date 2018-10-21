@@ -15,7 +15,13 @@
 #include <infuse_debug_tools/ConnectTopic.h>
 #include <infuse_debug_tools/AddVirtualFrame.h>
 
-class ASN1BitstreamToTf
+#include "asn1_bitstream_transform_processer.hpp"
+
+
+namespace infuse_debug_tools
+{
+
+class ASN1BitstreamToTf : ASN1BitstreamTransformProcesser
 {
 public:
   ASN1BitstreamToTf();
@@ -29,8 +35,6 @@ public:
   void pose_callback(const infuse_msgs::asn1_bitstream::Ptr& msg);
 
 private:
-  geometry_msgs::TransformStamped process_pose(const asn1SccTransformWithCovariance& asn1Transform);
-  geometry_msgs::TransformStamped process_delta_pose(const asn1SccTransformWithCovariance& asn1Transform);
   geometry_msgs::TransformStamped parse_frame(const std::vector<std::string> &vstrings);
 
 private:
@@ -41,17 +45,16 @@ private:
   std::map<std::string,ros::Subscriber> sub_map_;
   tf2_ros::TransformBroadcaster tf_broadcaster_;
   tf2_ros::StaticTransformBroadcaster static_tf_broadcaster_;
-
-  bool publish_asn1_time_;
 };
 
 
 ASN1BitstreamToTf::ASN1BitstreamToTf() :
   private_nh_{"~"},
   connect_pose_srv_{private_nh_.advertiseService("connect_pose", &ASN1BitstreamToTf::connect_pose, this)},
-  add_virtual_frame_srv_{private_nh_.advertiseService("add_virtual_frame", &ASN1BitstreamToTf::add_virtual_frame, this)},
-  publish_asn1_time_{private_nh_.param<bool>("publish_asn1_time", false)}
+  add_virtual_frame_srv_{private_nh_.advertiseService("add_virtual_frame", &ASN1BitstreamToTf::add_virtual_frame, this)}
 {
+  private_nh_.param<bool>("publish_asn1_time", publish_asn1_time_, false);
+
   {
     std::vector<std::string> virtual_frames;
     if (private_nh_.getParam("virtual_frames", virtual_frames)) {
@@ -194,37 +197,6 @@ bool ASN1BitstreamToTf::connect_pose(infuse_debug_tools::ConnectTopic::Request  
   }
 }
 
-geometry_msgs::TransformStamped ASN1BitstreamToTf::process_pose(const asn1SccTransformWithCovariance& asn1_pose)
-{
-  geometry_msgs::TransformStamped ros_msg;
-  if (publish_asn1_time_) {
-    ros_msg.header.stamp = ros::Time::now();
-  } else {
-    // Using child time. Not a problem because it should be equal to parentTime for a normal pose
-    ros_msg.header.stamp.fromNSec((uint64_t)asn1_pose.metadata.childTime.microseconds * 1000ull);
-  }
-  fromASN1SCC(asn1_pose.metadata.parentFrameId, ros_msg.header.frame_id);
-  fromASN1SCC(asn1_pose.metadata.childFrameId, ros_msg.child_frame_id);
-  ros_msg.transform.translation.x = asn1_pose.data.translation.arr[0];
-  ros_msg.transform.translation.y = asn1_pose.data.translation.arr[1];
-  ros_msg.transform.translation.z = asn1_pose.data.translation.arr[2];
-  ros_msg.transform.rotation.x = asn1_pose.data.orientation.arr[0];
-  ros_msg.transform.rotation.y = asn1_pose.data.orientation.arr[1];
-  ros_msg.transform.rotation.z = asn1_pose.data.orientation.arr[2];
-  ros_msg.transform.rotation.w = asn1_pose.data.orientation.arr[3];
-
-  return std::move(ros_msg);
-}
-
-geometry_msgs::TransformStamped ASN1BitstreamToTf::process_delta_pose(const asn1SccTransformWithCovariance& asn1_pose)
-{
-  throw "Received a delta pose but delta pose processing is not yet implemented";
-
-  geometry_msgs::TransformStamped ros_msg;
-  return std::move(ros_msg);
-
-}
-
 void ASN1BitstreamToTf::pose_callback(const infuse_msgs::asn1_bitstream::Ptr& msg)
 {
   // Initialize
@@ -264,12 +236,13 @@ void ASN1BitstreamToTf::pose_callback(const infuse_msgs::asn1_bitstream::Ptr& ms
   tf_broadcaster_.sendTransform(transformStamped);
 }
 
+} // namespace infuse_debug_tools
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "asn1_bitstream_to_tf");
 
-  ASN1BitstreamToTf asn1_bitstream_to_tf;
+  infuse_debug_tools::ASN1BitstreamToTf asn1_bitstream_to_tf;
 
   ros::spin();
 

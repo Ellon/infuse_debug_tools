@@ -14,6 +14,8 @@
 
   <node pkg="tf2_ros" name="RoverBodyFrame_RoverBaseFrame_fix" type="static_transform_publisher" output="screen" args="0 0 0 0 0 0 RoverBodyFrame RoverBaseFrame" />  
 
+  <node pkg="tf2_ros" name="Velodyne_velodyne_fix" type="static_transform_publisher" output="screen" args="0 0 0 0 0 0 Velodyne velodyne" />  
+
   <node pkg="rosbag" name="rosbag_play" type="play" output="screen" args="-d 5 $(arg bag)" />
 
   <node pkg="rviz" name="rviz" type="rviz" args="-d $(find infuse_debug_tools)/rviz/debug_velodyne.rviz"/>

@@ -86,7 +86,7 @@ int main(int argc, char **argv)
 
   // Initialize globals
   asn1PointCloud_ptr = std::make_unique<asn1SccPointcloud>();
-  topic = "/velodyne/point_cloud";
+  topic = "input_cloud";
   pcd_count = 0;
   pcd_binary_mode = true;
 

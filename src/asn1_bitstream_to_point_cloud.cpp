@@ -133,10 +133,7 @@ void ASN1BitstreamToPointCloud::point_cloud_callback(const infuse_msgs::asn1_bit
     return;
   }
 
-  // Convert to PCL
-  static PointCloud msg_cloud;
-  fromASN1SCC(*asn1_pointcloud_ptr_, msg_cloud);
-
+  // Handle poses stored in the metadata
   if (publish_poses_) {
 
     std::array<asn1SccTransformWithCovariance, 2> transforms = {
@@ -168,8 +165,15 @@ void ASN1BitstreamToPointCloud::point_cloud_callback(const infuse_msgs::asn1_bit
     }
   }
 
-  // Publish cloud
-  pcl_conversions::toPCL(cb_time, msg_cloud.header.stamp);
+  // Convert to PCL
+  static PointCloud msg_cloud;
+  fromASN1SCC(*asn1_pointcloud_ptr_, msg_cloud);
+
+  // The ASN1 time was already stored on the pcl cloud by fromASN1SCC call
+  // above. If we want to use the callback time he have to rewrite it here.
+  if (not publish_asn1_time_)
+    pcl_conversions::toPCL(cb_time, msg_cloud.header.stamp);
+
   pub.publish(msg_cloud.makeShared());
 }
 

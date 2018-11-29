@@ -11,13 +11,12 @@
 
 #include <infuse_msgs/asn1_bitstream.h>
 #include <infuse_asn1_types/TransformWithCovariance.h>
-#include <infuse_asn1_conversions/asn1_base_conversions.hpp>
 
 #include <infuse_debug_tools/LogTopic.h>
 
 #include "asn1_bitstream_transform_processer.hpp"
+#include "asn1_bitstream_logger.hpp"
 
-#include <Eigen/Dense>
 
 namespace infuse_debug_tools
 {
@@ -91,7 +90,13 @@ bool ASN1BitstreamTransformToLogfile::register_log_callback(const std::string &t
 {
   ofs_map_[topic] = std::ofstream(logfile);
   // Write header
-  ofs_map_[topic] << "#parent_time child_time x y z qw qx qy qz q_norm" << '\n';
+  std::vector<std::string> entries{ASN1BitstreamLogger::GetTransformWithCovarianceLogEntries()};
+  unsigned int index = 1;
+  for (auto entry : entries) {
+    ofs_map_[topic] << "# " << index << " - " << entry << '\n';
+    index++;  
+  }
+  // ofs_map_[topic] << "#parent_time child_time x y z qw qx qy qz q_norm roll pitch yaw" << '\n';
   boost::function<void (const infuse_msgs::asn1_bitstream::Ptr&)> callback = 
     boost::bind(&ASN1BitstreamTransformToLogfile::pose_callback, this, _1, boost::ref(ofs_map_[topic]));
   // Create subscriber
@@ -132,23 +137,7 @@ void ASN1BitstreamTransformToLogfile::pose_callback(const infuse_msgs::asn1_bits
     return;
   }
 
-  Eigen::Vector4d q_vec;
-  q_vec << asn1Transform.data.orientation.arr[0],
-           asn1Transform.data.orientation.arr[1],
-           asn1Transform.data.orientation.arr[2],
-           asn1Transform.data.orientation.arr[3];
-
-  ofs << asn1Transform.metadata.parentTime.microseconds << " "
-      << asn1Transform.metadata.childTime.microseconds << " "
-      << asn1Transform.data.translation.arr[0] << " "
-      << asn1Transform.data.translation.arr[1] << " "
-      << asn1Transform.data.translation.arr[2] << " "
-      << asn1Transform.data.orientation.arr[3] << " "
-      << asn1Transform.data.orientation.arr[0] << " "
-      << asn1Transform.data.orientation.arr[1] << " "
-      << asn1Transform.data.orientation.arr[2] << " " 
-      << q_vec.norm()  << " " 
-      << "\n";
+  ASN1BitstreamLogger::LogTransformWithCovariance(asn1Transform, ofs);
 
 }
 

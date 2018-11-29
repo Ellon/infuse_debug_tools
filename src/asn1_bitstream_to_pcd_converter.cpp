@@ -57,14 +57,14 @@ void callback(const infuse_msgs::asn1_bitstream::Ptr& msg)
   // TODO: Test if the transformation is rigid
   // Something like the code below could be used
   // const float epsilon = 0.001;
-  // Eigen::Matrix3f R = T_fixed_sensor.linear();
+  // Eigen::Matrix3f R = T_fixed_sensor.rotation();
   // if(anyabs(1 - R.determinant()) > epsilon)
   //   return NOT_RIGID;
   // else
   //   return RIGID;
 
   pcl_cloud.sensor_origin_ << T_fixed_sensor.translation(), 0.0;
-  pcl_cloud.sensor_orientation_ = Eigen::Quaternionf(T_fixed_sensor.linear());
+  pcl_cloud.sensor_orientation_ = Eigen::Quaternionf(T_fixed_sensor.rotation());
 
   // Save pcd
   std::string pcd_file_prefix = topic;

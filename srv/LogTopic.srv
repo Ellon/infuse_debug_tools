@@ -1,0 +1,5 @@
+string topic    # Name of the topic to connect
+string logfile  # Name of the logfile to write the output
+---
+bool success    # indicate successful connection
+string message  # informational, e.g. for error messages

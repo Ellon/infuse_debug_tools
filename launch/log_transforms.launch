@@ -1,0 +1,14 @@
+<launch>
+
+  <arg name="bag" doc="absolute path to bag to be replayed"/>
+
+  <node pkg="infuse_debug_tools" name="asn1_bitstream_transform_to_logfile" type="asn1_bitstream_transform_to_logfile_node" output="screen">
+
+    <param name="topics" value="/pose_robot_pom /infuse_crisp/output/VelodyneToRoverBodyFrame" />
+    <param name="logfiles" value="pose_robot_pom.txt velodyne_to_rover_body_frame.txt" />
+    
+  </node>
+
+  <node pkg="rosbag" name="rosbag_play" type="play" output="screen" args="--clock -d 5 $(arg bag)" />
+
+</launch>

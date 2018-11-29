@@ -15,6 +15,7 @@ add_service_files(
   FILES
   ConnectTopic.srv
   AddVirtualFrame.srv
+  LogTopic.srv
 )
 
 generate_messages(
@@ -85,4 +86,19 @@ target_link_libraries(asn1_bitstream_to_point_cloud_node
 	infuse_asn1_types::infuse_asn1_types
 	infuse_asn1_conversions::base_conversions
 	infuse_asn1_conversions::pcl_conversions
+)
+
+## asn1_bitstream_transform_to_logfile
+add_executable(asn1_bitstream_transform_to_logfile_node
+	src/asn1_bitstream_transform_to_logfile.cpp
+)
+target_include_directories(asn1_bitstream_transform_to_logfile_node
+	PUBLIC
+	${catkin_INCLUDE_DIRS}
+	${EIGEN3_INCLUDE_DIRS}
+)
+target_link_libraries(asn1_bitstream_transform_to_logfile_node
+	${catkin_LIBRARIES}
+	infuse_asn1_types::infuse_asn1_types
+	infuse_asn1_conversions::base_conversions
 )

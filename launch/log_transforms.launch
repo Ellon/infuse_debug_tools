@@ -9,6 +9,13 @@
     
   </node>
 
+  <node pkg="infuse_debug_tools" name="asn1_bitstream_point_cloud_to_logfile" type="asn1_bitstream_point_cloud_to_logfile_node" output="screen">
+
+    <param name="topics" value="/velodyne/point_cloud" />
+    <param name="logfiles" value="velodyne_point_cloud.txt" />
+    
+  </node>
+
   <node pkg="rosbag" name="rosbag_play" type="play" output="screen" args="--clock -d 5 $(arg bag)" />
 
 </launch>

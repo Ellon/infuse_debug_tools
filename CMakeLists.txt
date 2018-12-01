@@ -103,3 +103,17 @@ target_link_libraries(asn1_bitstream_transform_to_logfile_node
 	${catkin_LIBRARIES}
 	infuse_debug_tools
 )
+
+## asn1_bitstream_point_cloud_to_logfile
+add_executable(asn1_bitstream_point_cloud_to_logfile_node
+	src/asn1_bitstream_point_cloud_to_logfile.cpp
+)
+target_include_directories(asn1_bitstream_point_cloud_to_logfile_node
+	PUBLIC
+	${catkin_INCLUDE_DIRS}
+	${EIGEN3_INCLUDE_DIRS}
+)
+target_link_libraries(asn1_bitstream_point_cloud_to_logfile_node
+	${catkin_LIBRARIES}
+	infuse_debug_tools
+)

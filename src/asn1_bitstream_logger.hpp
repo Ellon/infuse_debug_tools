@@ -19,8 +19,8 @@ public:
   static void LogTransformWithCovariance(const asn1SccTransformWithCovariance & transform, std::ofstream & ofs);
   static std::vector<std::string> GetTransformWithCovarianceLogEntries(std::string prefix = "");
 
-  // void LogPointcloud(const asn1SccPointcloud & cloud, std::ofstream & ofs);
-  // std::vector<std::string> GetPointcloudLogHeader(std::string prefix = "");
+  static void LogPointcloud(const asn1SccPointcloud & cloud, std::ofstream & ofs);
+  static std::vector<std::string> GetPointcloudLogEntries(std::string prefix = "");
 
 private:
   static double Yaw(const Eigen::Quaterniond & quat);

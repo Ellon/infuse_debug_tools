@@ -10,7 +10,7 @@
 #include <geometry_msgs/TransformStamped.h>
 
 #include <infuse_msgs/asn1_bitstream.h>
-#include <infuse_asn1_types/TransformWithCovariance.h>
+#include <infuse_asn1_types/Pointcloud.h>
 
 #include <infuse_debug_tools/LogTopic.h>
 
@@ -21,16 +21,16 @@
 namespace infuse_debug_tools
 {
 
-class ASN1BitstreamTransformToLogfile
+class ASN1BitstreamPointcloudToLogfile
 {
 public:
-  ASN1BitstreamTransformToLogfile();
-  ~ASN1BitstreamTransformToLogfile();
+  ASN1BitstreamPointcloudToLogfile();
+  ~ASN1BitstreamPointcloudToLogfile();
 
   bool log_topic(infuse_debug_tools::LogTopic::Request  &req,
                  infuse_debug_tools::LogTopic::Response &res);
 
-  void pose_callback(const infuse_msgs::asn1_bitstream::Ptr& msg, std::ofstream& ofs);
+  void cloud_callback(const infuse_msgs::asn1_bitstream::Ptr& msg, std::ofstream& ofs);
 
 private:
   bool register_log_callback(const std::string &topic, const std::string &logfile);
@@ -41,12 +41,15 @@ private:
   std::map<std::string,ros::Subscriber> sub_map_;
   std::map<std::string,std::ofstream> ofs_map_;
   tf2_ros::TransformBroadcaster tf_broadcaster_;
+
+  std::unique_ptr<asn1SccPointcloud> asn1_pointcloud_ptr_;
 };
 
 
-ASN1BitstreamTransformToLogfile::ASN1BitstreamTransformToLogfile() :
+ASN1BitstreamPointcloudToLogfile::ASN1BitstreamPointcloudToLogfile() :
   private_nh_{"~"},
-  connect_pose_srv_{private_nh_.advertiseService("log_topic", &ASN1BitstreamTransformToLogfile::log_topic, this)}
+  connect_pose_srv_{private_nh_.advertiseService("log_topic", &ASN1BitstreamPointcloudToLogfile::log_topic, this)},
+  asn1_pointcloud_ptr_{std::make_unique<asn1SccPointcloud>()}
 {
   std::string topics_str;
   std::string logfiles_str;
@@ -80,17 +83,17 @@ ASN1BitstreamTransformToLogfile::ASN1BitstreamTransformToLogfile() :
   }
 }
 
-ASN1BitstreamTransformToLogfile::~ASN1BitstreamTransformToLogfile()
+ASN1BitstreamPointcloudToLogfile::~ASN1BitstreamPointcloudToLogfile()
 {
   for (auto & x : ofs_map_)
     x.second.close();
 }
 
-bool ASN1BitstreamTransformToLogfile::register_log_callback(const std::string &topic, const std::string &logfile)
+bool ASN1BitstreamPointcloudToLogfile::register_log_callback(const std::string &topic, const std::string &logfile)
 {
   ofs_map_[topic] = std::ofstream(logfile);
   // Write header
-  std::vector<std::string> entries{ASN1BitstreamLogger::GetTransformWithCovarianceLogEntries()};
+  std::vector<std::string> entries{ASN1BitstreamLogger::GetPointcloudLogEntries()};
   unsigned int index = 1;
   for (auto entry : entries) {
     ofs_map_[topic] << "# " << index << " - " << entry << '\n';
@@ -98,13 +101,13 @@ bool ASN1BitstreamTransformToLogfile::register_log_callback(const std::string &t
   }
   // ofs_map_[topic] << "#parent_time child_time x y z qw qx qy qz q_norm roll pitch yaw" << '\n';
   boost::function<void (const infuse_msgs::asn1_bitstream::Ptr&)> callback = 
-    boost::bind(&ASN1BitstreamTransformToLogfile::pose_callback, this, _1, boost::ref(ofs_map_[topic]));
+    boost::bind(&ASN1BitstreamPointcloudToLogfile::cloud_callback, this, _1, boost::ref(ofs_map_[topic]));
   // Create subscriber
   sub_map_[topic] = nh_.subscribe<infuse_msgs::asn1_bitstream>(topic, 100, callback);
-  ROS_INFO_STREAM("Logging transform with covariance topic " << topic << " to file " << logfile);
+  ROS_INFO_STREAM("Logging point cloud topic " << topic << " to file " << logfile);
 }
 
-bool ASN1BitstreamTransformToLogfile::log_topic(infuse_debug_tools::LogTopic::Request  &req,
+bool ASN1BitstreamPointcloudToLogfile::log_topic(infuse_debug_tools::LogTopic::Request  &req,
                                                 infuse_debug_tools::LogTopic::Response &res)
 {
   try {
@@ -121,24 +124,23 @@ bool ASN1BitstreamTransformToLogfile::log_topic(infuse_debug_tools::LogTopic::Re
   }
 }
 
-void ASN1BitstreamTransformToLogfile::pose_callback(const infuse_msgs::asn1_bitstream::Ptr& msg, std::ofstream& ofs)
+void ASN1BitstreamPointcloudToLogfile::cloud_callback(const infuse_msgs::asn1_bitstream::Ptr& msg, std::ofstream& ofs)
 {
   // Initialize
-  asn1SccTransformWithCovariance asn1Transform;
-  asn1SccTransformWithCovariance_Initialize(&asn1Transform);
+  asn1SccPointcloud_Initialize(asn1_pointcloud_ptr_.get());
 
   // Decode
   flag res;
   int errorCode;
   BitStream bstream;
   BitStream_AttachBuffer(&bstream, msg->data.data(), msg->data.size());
-  res = asn1SccTransformWithCovariance_Decode(&asn1Transform, &bstream, &errorCode);
+  res = asn1SccPointcloud_Decode(asn1_pointcloud_ptr_.get(), &bstream, &errorCode);
   if (not res) {
-    ROS_INFO("Error decoding asn1SccTransformWithCovariance! Error: %d", errorCode);
+    ROS_INFO("Error decoding asn1Pointcloud! Error: %d", errorCode);
     return;
   }
 
-  ASN1BitstreamLogger::LogTransformWithCovariance(asn1Transform, ofs);
+  ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, ofs);
   
   ofs << '\n';
 }
@@ -149,7 +151,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "asn1_bitstream_transform_to_logfile");
 
-  infuse_debug_tools::ASN1BitstreamTransformToLogfile asn1_bitstream_transform_to_logfile;
+  infuse_debug_tools::ASN1BitstreamPointcloudToLogfile asn1_bitstream_transform_to_logfile;
 
   ros::spin();
 

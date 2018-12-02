@@ -3,7 +3,6 @@
 
 #include <ros/ros.h>
 
-#include <tf2/LinearMath/Quaternion.h>
 #include <tf2_ros/transform_broadcaster.h>
 
 #include <infuse_msgs/asn1_bitstream.h>
@@ -12,9 +11,6 @@
 
 #include <infuse_debug_tools/ConnectTopic.h>
 
-//#include <pcl_ros/point_cloud.h>
-//#include <pcl/point_types.h>
-//#include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/Image.h>
 
 #include "asn1_bitstream_transform_processer.hpp"
@@ -24,7 +20,6 @@ void fromASN1SCC(const asn1SccFramePair& image, sensor_msgs::Image& msg_image){
 
 	//Not sure this is gonna work
 	msg_image.header.stamp.fromNSec((uint64_t)image.left.metadata.timeStamp.microseconds * 1000ull);
-	//fromASN1SCC(image.left.metadata.timeStamp, msg_image_left.header.stamp);
 
 	//not sure anything below is gonna work neither
 	//fromASN1SCC(image.msgVersion, msg_image_left.header.frame_id);
@@ -34,12 +29,11 @@ void fromASN1SCC(const asn1SccFramePair& image, sensor_msgs::Image& msg_image){
 
 	msg_image.encoding = "mono8";
 
-	msg_image.is_bigendian = true; //false?
+	msg_image.is_bigendian = true; //or false?
 
 	msg_image.step = 8*msg_image.height;
 
 	msg_image.data.resize(image.left.data.data.nCount+image.right.data.data.nCount);
-	std::cout<<image.left.data.data.nCount<<std::endl;
 
 	int i = 0;
 	int line_idx = 0;
@@ -68,9 +62,6 @@ public:
 					   infuse_debug_tools::ConnectTopic::Response &res);
 
 	void image_callback (const infuse_msgs::asn1_bitstream::Ptr& msg, const ros::Publisher &pub);
-
-private:
-	//geometry_msgs::TransformStamped process_point_cloud(const asn1SccTransformWithCovariance& asn1Transform);
 
 private:
 	ros::NodeHandle nh_;
@@ -150,7 +141,7 @@ bool ASN1BitstreamToImage::connect_image(infuse_debug_tools::ConnectTopic::Reque
 
 void ASN1BitstreamToImage::image_callback(const infuse_msgs::asn1_bitstream::Ptr& msg, const ros::Publisher &pub)
 {
-	// Get time at the begining of the callback
+	// Get time at the begining of the callback -- unused now...
 	auto cb_time = ros::Time::now();
 
 	// Initialize
@@ -167,53 +158,12 @@ void ASN1BitstreamToImage::image_callback(const infuse_msgs::asn1_bitstream::Ptr
 		return;
 	}
 
-	// Handle poses stored in the metadata
-//	if (publish_poses_) {
-
-//		std::array<asn1SccTransformWithCovariance, 2> transforms = {
-//			asn1_image_ptr_->
-//			asn1_image_ptr_->metadata.pose_robotFrame_sensorFrame
-//		};
-
-//		for (const auto & asn1Transform : transforms) {
-//			// Process pose or delta pose
-//			geometry_msgs::TransformStamped transformStamped;
-//			try {
-//				auto is_asn1_time_equal = [](const asn1SccTime& t1, const asn1SccTime& t2){
-//					return (t1.microseconds == t2.microseconds) and (t1.usecPerSec == t2.usecPerSec);
-//				};
-
-//				if(is_asn1_time_equal(asn1Transform.metadata.parentTime, asn1Transform.metadata.childTime)) {
-//					transformStamped = process_pose(asn1Transform);
-//				} else {
-//					transformStamped = process_delta_pose(asn1Transform);
-//				}
-//			} catch (const char *exception) {
-//				ROS_INFO("%s", exception);
-//			}
-
-//			if (not publish_asn1_time_)
-//				transformStamped.header.stamp = cb_time;
-//			// Publish transform
-//			tf_broadcaster_.sendTransform(transformStamped);
-//		}
-//	}
-
-	// Convert to PCL
-	static sensor_msgs::Image msg_image_left;
-	static sensor_msgs::Image msg_image_right;
-	ROS_INFO("Image received. Converting...");
-	fromASN1SCC(*asn1_image_ptr_, msg_image_left);
-	ROS_INFO("Image converted.");
-	// ANDREA: unsure, gotta check the toPCL and eventually create a 'toROS' equivalent
-	// The ASN1 time was already stored in the image by fromASN1SCC call
-	// above. If we want to use the callback time he have to rewrite it here.
-	//if (not publish_asn1_time_)
-	//  pcl_conversions::toPCL(cb_time, msg_cloud.header.stamp);
-
-	pub.publish(msg_image_left);
-	//pub_right.publish(msg_image_right);
+	// Convert to sensor_msgs/Image
+	static sensor_msgs::Image msg_image;
+	fromASN1SCC(*asn1_image_ptr_, msg_image);
+	pub.publish(msg_image);
 }
+
 
 } // namespace infuse_debug_tools
 

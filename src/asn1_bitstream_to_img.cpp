@@ -16,37 +16,64 @@
 #include "asn1_bitstream_transform_processer.hpp"
 
 
-void fromASN1SCC(const asn1SccFramePair& image, sensor_msgs::Image& msg_image){
+void fromASN1SCC(const asn1SccFramePair& image, sensor_msgs::Image& msg_image_left, sensor_msgs::Image& msg_image_right){
 
 	//Not sure this is gonna work
-	msg_image.header.stamp.fromNSec((uint64_t)image.left.metadata.timeStamp.microseconds * 1000ull);
+	msg_image_left.header.stamp.fromNSec((uint64_t)image.left.metadata.timeStamp.microseconds * 1000ull);
 
 	//not sure anything below is gonna work neither
 	//fromASN1SCC(image.msgVersion, msg_image_left.header.frame_id);
 
-	msg_image.width = image.left.data.cols+image.right.data.cols;
-	msg_image.height = image.left.data.rows;
+	msg_image_left.width = image.left.data.cols;
+	msg_image_left.height = image.left.data.rows;
 
-	msg_image.encoding = "mono8";
+	msg_image_left.encoding = "mono8";
 
-	msg_image.is_bigendian = true; //or false?
+	msg_image_left.is_bigendian = true; //or false?
 
-	msg_image.step = 8*msg_image.height;
+	msg_image_left.step = 8*msg_image_left.height;
 
-	msg_image.data.resize(image.left.data.data.nCount+image.right.data.data.nCount);
+	msg_image_left.data.resize(image.left.data.data.nCount);
+
+//	int line_idx = 0;
+//	while(i<msg_image_left.data.size()){
+//		for(int j = 0; j < image.left.data.cols; j++){
+//			msg_image_left.data[i] = image.left.data.data.arr[line_idx*image.left.data.cols+j];
+//			i++;
+//		}
+//		for(int j = 0; j < image.right.data.cols; j++){
+//			msg_image_left.data[i] = image.right.data.data.arr[line_idx*image.right.data.cols+j];
+//			i++;
+//		}
+//		line_idx++;
+//	}
 
 	int i = 0;
-	int line_idx = 0;
-	while(i<msg_image.data.size()){
-		for(int j = 0; j < image.left.data.cols; j++){
-			msg_image.data[i] = image.left.data.data.arr[line_idx*image.left.data.cols+j];
-			i++;
-		}
-		for(int j = 0; j < image.right.data.cols; j++){
-			msg_image.data[i] = image.right.data.data.arr[line_idx*image.right.data.cols+j];
-			i++;
-		}
-		line_idx++;
+	while(i<msg_image_left.data.size()){
+		msg_image_left.data[i] = image.left.data.data.arr[i];
+		i++;
+	}
+
+	msg_image_right.header.stamp.fromNSec((uint64_t)image.right.metadata.timeStamp.microseconds * 1000ull);
+
+	//not sure anything below is gonna work neither
+	//fromASN1SCC(image.msgVersion, msg_image_left.header.frame_id);
+
+	msg_image_right.width = image.right.data.cols;
+	msg_image_right.height = image.right.data.rows;
+
+	msg_image_right.encoding = "mono8";
+
+	msg_image_right.is_bigendian = true; //or false?
+
+	msg_image_right.step = 8*msg_image_right.height;
+
+	msg_image_right.data.resize(image.right.data.data.nCount);
+
+	i = 0;
+	while(i<msg_image_right.data.size()){
+		msg_image_right.data[i] = image.right.data.data.arr[i];
+		i++;
 	}
 }
 
@@ -61,19 +88,20 @@ public:
 	bool connect_image(infuse_debug_tools::ConnectTopic::Request  &req,
 					   infuse_debug_tools::ConnectTopic::Response &res);
 
-	void image_callback (const infuse_msgs::asn1_bitstream::Ptr& msg, const ros::Publisher &pub);
+	void image_callback (const infuse_msgs::asn1_bitstream::Ptr& msg, const ros::Publisher &pub_left, const ros::Publisher &pub_right);
 
 private:
 	ros::NodeHandle nh_;
 	ros::NodeHandle private_nh_;
 	ros::ServiceServer connect_image_srv_;
 	std::map<std::string,ros::Subscriber> sub_map_;
-	std::map<std::string,ros::Publisher> pub_map_;
+	std::map<std::string,std::pair<ros::Publisher, ros::Publisher>> pub_map_;
 	tf2_ros::TransformBroadcaster tf_broadcaster_;
 
 	bool publish_poses_;
 
 	std::unique_ptr<asn1SccFramePair> asn1_image_ptr_;
+	void bind_subToPubs(std::string topic_in);
 };
 
 
@@ -98,15 +126,7 @@ ASN1BitstreamToImage::ASN1BitstreamToImage() :
 			// Connect to topics
 			for (const auto & topic : topics) {
 				try {
-					std::string output_topic = topic + "_ros";
-					// Create publisher
-					pub_map_[topic] = nh_.advertise<sensor_msgs::Image>(output_topic, 100);
-					// Bind publisher to the callback
-					boost::function<void (const infuse_msgs::asn1_bitstream::Ptr&)> callback =
-							boost::bind(&ASN1BitstreamToImage::image_callback, this, _1, boost::cref(pub_map_[topic]));
-					// Create subscriber
-					sub_map_[topic] = nh_.subscribe<sensor_msgs::Image>(topic, 100, callback);
-					ROS_INFO_STREAM("Connected to topic " << topic << ". Publishing images on " << output_topic);
+					bind_subToPubs(topic);
 				} catch (...) {
 					ROS_INFO_STREAM("ERROR: Could not connect to topic " << topic);
 				}
@@ -119,14 +139,15 @@ bool ASN1BitstreamToImage::connect_image(infuse_debug_tools::ConnectTopic::Reque
 										 infuse_debug_tools::ConnectTopic::Response &res)
 {
 	try {
-		std::string output_topic = req.topic + "_ros";
-		// Connect to topics
-		pub_map_[req.topic] = nh_.advertise<sensor_msgs::Image>(output_topic, 100);
-		// Bind publisher to the callback
-		boost::function<void (const infuse_msgs::asn1_bitstream::Ptr&)> callback =
-				boost::bind(&ASN1BitstreamToImage::image_callback, this, _1, boost::cref(pub_map_[req.topic]));
-		// Create subscriber
-		sub_map_[req.topic] = nh_.subscribe<sensor_msgs::Image>(req.topic, 100, callback);
+		bind_subToPubs(req.topic);
+//		std::string output_topic = req.topic + "_ros";
+//		// Connect to topics
+//		pub_map_[req.topic] = nh_.advertise<sensor_msgs::Image>(output_topic, 100);
+//		// Bind publisher to the callback
+//		boost::function<void (const infuse_msgs::asn1_bitstream::Ptr&)> callback =
+//				boost::bind(&ASN1BitstreamToImage::image_callback, this, _1, boost::cref(pub_map_[req.topic]));
+//		// Create subscriber
+//		sub_map_[req.topic] = nh_.subscribe<sensor_msgs::Image>(req.topic, 100, callback);
 		res.success = true;
 		return true;
 	} catch (...) {
@@ -139,7 +160,22 @@ bool ASN1BitstreamToImage::connect_image(infuse_debug_tools::ConnectTopic::Reque
 	}
 }
 
-void ASN1BitstreamToImage::image_callback(const infuse_msgs::asn1_bitstream::Ptr& msg, const ros::Publisher &pub)
+void ASN1BitstreamToImage::bind_subToPubs(std::string topic_in){
+
+	std::string output_topic_left = topic_in + "_rosLeft";
+	std::string output_topic_right= topic_in + "_rosRight";
+	// Create publisher
+	pub_map_[topic_in] = std::make_pair(nh_.advertise<sensor_msgs::Image>(output_topic_left, 100), nh_.advertise<sensor_msgs::Image>(output_topic_right, 100));
+	// Bind publisher to the callback
+	boost::function<void (const infuse_msgs::asn1_bitstream::Ptr&)> callback =
+			boost::bind(&ASN1BitstreamToImage::image_callback, this, _1, boost::cref(pub_map_[topic_in].first), boost::cref(pub_map_[topic_in].second));
+	// Create subscriber
+	sub_map_[topic_in] = nh_.subscribe<sensor_msgs::Image>(topic_in, 100, callback);
+	ROS_INFO_STREAM("Connected to topic " << topic_in << ". Publishing images on " << output_topic_left<<" and to "<<output_topic_right);
+
+}
+
+void ASN1BitstreamToImage::image_callback(const infuse_msgs::asn1_bitstream::Ptr& msg, const ros::Publisher &pub_left, const ros::Publisher &pub_right )
 {
 	// Get time at the begining of the callback -- unused now...
 	auto cb_time = ros::Time::now();
@@ -159,9 +195,11 @@ void ASN1BitstreamToImage::image_callback(const infuse_msgs::asn1_bitstream::Ptr
 	}
 
 	// Convert to sensor_msgs/Image
-	static sensor_msgs::Image msg_image;
-	fromASN1SCC(*asn1_image_ptr_, msg_image);
-	pub.publish(msg_image);
+	static sensor_msgs::Image msg_image_left;
+	static sensor_msgs::Image msg_image_right;
+	fromASN1SCC(*asn1_image_ptr_, msg_image_left, msg_image_right);
+	pub_left.publish(msg_image_left);
+	pub_right.publish(msg_image_right);
 }
 
 

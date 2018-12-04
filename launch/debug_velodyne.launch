@@ -13,7 +13,9 @@
     
   </node>
 
-  <node pkg="tf2_ros" name="Kesskess_broadcaster" type="static_transform_publisher" output="screen" args="3003.856 -9232.7467 -10.0525 0 0 0 LocalTerrainFrame KessKessGPS" />  
+  <node pkg="tf2_ros" name="xaluca_broadcaster" type="static_transform_publisher" output="screen" args="-3003.856 +9232.7467 10.0525 0 0 0 LocalTerrainFrame XalucaGPS" />  
+
+<!--   <node pkg="tf2_ros" name="Kesskess_broadcaster" type="static_transform_publisher" output="screen" args="3003.856 -9232.7467 -10.0525 0 0 0 LocalTerrainFrame KessKessGPS" />   -->
 
 <!--   <node pkg="tf2_ros" name="LAASParking_broadcaster" type="static_transform_publisher" output="screen" args="-745.395003 375.152327 -1.494203 0 0 0 LocalTerrainFrame LAASParking" />   -->
 

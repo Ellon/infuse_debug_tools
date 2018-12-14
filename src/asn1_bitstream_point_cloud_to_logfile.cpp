@@ -99,7 +99,6 @@ bool ASN1BitstreamPointcloudToLogfile::register_log_callback(const std::string &
     ofs_map_[topic] << "# " << index << " - " << entry << '\n';
     index++;  
   }
-  // ofs_map_[topic] << "#parent_time child_time x y z qw qx qy qz q_norm roll pitch yaw" << '\n';
   boost::function<void (const infuse_msgs::asn1_bitstream::Ptr&)> callback = 
     boost::bind(&ASN1BitstreamPointcloudToLogfile::cloud_callback, this, _1, boost::ref(ofs_map_[topic]));
   // Create subscriber

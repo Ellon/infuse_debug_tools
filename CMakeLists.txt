@@ -31,16 +31,22 @@ catkin_package()
 add_library(infuse_debug_tools 
 	src/asn1_bitstream_transform_processer.cpp
 	src/asn1_bitstream_logger.cpp
+	src/PointCloudExtractor.cpp
 )
 target_include_directories(infuse_debug_tools
 	PUBLIC
 	${catkin_INCLUDE_DIRS}
+	${Boost_INCLUDE_DIRS}
 	${EIGEN3_INCLUDE_DIRS}
+	${PCL_INCLUDE_DIRS}
 )
 target_link_libraries(infuse_debug_tools
+	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
+	${PCL_IO_LIBRARIES}
 	infuse_asn1_types::infuse_asn1_types
 	infuse_asn1_conversions::base_conversions
+	infuse_asn1_conversions::pcl_conversions
 )
 
 ## asn1_bitstream_to_pcd_converter
@@ -126,17 +132,9 @@ add_executable(infuse_data_extractor
 )
 target_include_directories(infuse_data_extractor
 	PUBLIC
-	${catkin_INCLUDE_DIRS}
 	${Boost_INCLUDE_DIRS}
-	${EIGEN3_INCLUDE_DIRS}
-	${PCL_INCLUDE_DIRS}
 )
 target_link_libraries(infuse_data_extractor
 	${Boost_LIBRARIES}
-	${catkin_LIBRARIES}
-	${PCL_IO_LIBRARIES}
-	infuse_asn1_types::infuse_asn1_types
-	# infuse_asn1_conversions::base_conversions
-	infuse_asn1_conversions::pcl_conversions
 	infuse_debug_tools
 )

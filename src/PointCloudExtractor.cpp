@@ -133,7 +133,7 @@ void PointCloudExtractor::Extract()
         } else throw std::runtime_error("Could not instantiate an infuse_msgs::asn1_bitstream message!");
       } // for msgs in view
     } catch (...) {
-      // Assure the bags are closed if something goes wrong and re-trhow
+      // Assure the bags are closed if something goes wrong and re-throw
       bag.close();
       if (extract_pngs_)  pcl_viewer_->close();
       throw;
@@ -152,6 +152,10 @@ void PointCloudExtractor::Extract()
 
 void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::Ptr& msg)
 {
+  // Guard against overflow on the filename numbers
+  if (pcd_count_ >= std::pow(10, length_pcd_filename_))
+    throw std::runtime_error("Overflow on the filename counter. Please increase the number of characters to be used to compose the filename");
+
   // Initialize asn1 point cloud to be sure we have clean object.
   asn1SccPointcloud_Initialize(asn1_pointcloud_ptr_.get());
 

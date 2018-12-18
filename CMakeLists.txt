@@ -8,7 +8,7 @@ find_package(catkin REQUIRED COMPONENTS roscpp infuse_msgs std_msgs message_gene
 
 find_package(infuse_asn1_types REQUIRED)
 find_package(infuse_asn1_conversions REQUIRED)
-find_package( PCL 1.7.1 REQUIRED )
+find_package(PCL 1.7.1 REQUIRED )
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem timer program_options)
 

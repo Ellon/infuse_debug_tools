@@ -139,19 +139,3 @@ target_link_libraries(infuse_data_extractor
 	${Boost_LIBRARIES}
 	infuse_debug_tools
 )
-
-## pointcloud_to_png
-add_executable(pointcloud_to_png
-	src/pointcloud_to_png.cpp
-)
-target_include_directories(pointcloud_to_png
-	PUBLIC
-	${Boost_INCLUDE_DIRS}
-	${PCL_INCLUDE_DIRS}
-)
-target_link_libraries(pointcloud_to_png
-	${Boost_LIBRARIES}
-	${PCL_VISUALIZATION_LIBRARIES}
-	${PCL_IO_LIBRARIES}
-	infuse_debug_tools
-)

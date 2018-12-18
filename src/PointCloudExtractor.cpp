@@ -16,13 +16,17 @@ namespace bfs = boost::filesystem;
 
 namespace infuse_debug_tools {
 
-PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic)
+PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs)
   : output_dir_{output_dir},
     bag_paths_{bag_paths},
     point_cloud_topic_{point_cloud_topic},
     asn1_pointcloud_ptr_{std::make_unique<asn1SccPointcloud>()},
     pcd_count_{0},
-    length_pcd_filename_{5}
+    length_pcd_filename_{5},
+    extract_pngs_{extract_pngs},
+    pcl_viewer_{nullptr},
+    color_handler_{nullptr},
+    point_size_{1}
 {}
 
 
@@ -61,6 +65,18 @@ void PointCloudExtractor::Extract()
     }
   }
 
+  // Create png dir
+  if (extract_pngs_) {
+    png_dir_ = output_dir_ / "pngs";
+    bool dir_created = bfs::create_directory(png_dir_);
+    if (not dir_created) {
+      std::stringstream ss;
+      ss << "Could not create \"" << png_dir_.string() << "\" directory.";
+      throw std::runtime_error(ss.str());
+    }
+  }
+
+
   // Write dataformat file. The rationalle of keeping the dataformat separated
   // from the metadata is that this way it is possible to associate the cloud
   // number with the line in the metadata file.
@@ -88,6 +104,13 @@ void PointCloudExtractor::Extract()
     rosbag::View view(bag, rosbag::TopicQuery(topics));
     n_point_clouds += view.size();
     bag.close();
+  }
+
+  // Setup png extraction if needed
+  if (extract_pngs_) {
+    pcl_viewer_.reset(new pcl::visualization::PCLVisualizer ("3D Viewer"));
+    pcl_viewer_->setBackgroundColor (0, 0, 0);
+    pcl_viewer_->initCameraParameters ();
   }
 
   // Setup progress display
@@ -119,6 +142,11 @@ void PointCloudExtractor::Extract()
   } // for bags
 
   metadata_ofs_.close();
+
+  if (extract_pngs_) {
+    pcl_viewer_->close();
+  }
+
 }
 
 void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::Ptr& msg)
@@ -139,8 +167,8 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
   }
 
   // Convert to PCL
-  pcl::PointCloud<pcl::PointXYZI> pcl_cloud;
-  fromASN1SCC(*asn1_pointcloud_ptr_, pcl_cloud);
+  PointCloud::Ptr pcl_cloud_ptr(new PointCloud());
+  fromASN1SCC(*asn1_pointcloud_ptr_, *pcl_cloud_ptr);
 
   // Fill sensor pose information. This info ends up in the VIEWPOINT field of
   // the pcd file, and it's used to position the cloud on pcl_viewer with it
@@ -149,8 +177,8 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
   Eigen::Affine3d T_fixed_robot = ConvertAsn1PoseToEigen(asn1_pointcloud_ptr_->metadata.pose_fixedFrame_robotFrame);
   Eigen::Affine3d T_robot_sensor = ConvertAsn1PoseToEigen(asn1_pointcloud_ptr_->metadata.pose_robotFrame_sensorFrame);
   Eigen::Affine3f T_fixed_sensor = (T_fixed_robot * T_robot_sensor).cast<float>();
-  pcl_cloud.sensor_origin_ << T_fixed_sensor.translation(), 0.0;
-  pcl_cloud.sensor_orientation_ = Eigen::Quaternionf(T_fixed_sensor.rotation());   
+  pcl_cloud_ptr->sensor_origin_ << T_fixed_sensor.translation(), 0.0;
+  pcl_cloud_ptr->sensor_orientation_ = Eigen::Quaternionf(T_fixed_sensor.rotation());   
 
   // TODO: Test if the transformation is rigid. Something like the commented-
   // out code below could be used
@@ -169,7 +197,57 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
 
   // Save pcd
   bool pcd_binary_mode = true;
-  pcl::io::savePCDFile( pcd_path.string(), pcl_cloud, pcd_binary_mode );
+  pcl::io::savePCDFile( pcd_path.string(), *pcl_cloud_ptr, pcd_binary_mode );
+
+  // Handle PNG extraction
+  if (extract_pngs_) {
+    // Compute useful transformations
+    // sensor frame
+    Eigen::Affine3f T_world_sensor;
+    T_world_sensor = pcl_cloud_ptr->sensor_orientation_;
+    T_world_sensor.translation() = pcl_cloud_ptr->sensor_origin_.head<3>();
+    // sensor frame but considering only yaw
+    Eigen::Affine3f T_world_sensoryaw;
+    T_world_sensoryaw = Eigen::AngleAxis<float>(ASN1BitstreamLogger::Yaw(pcl_cloud_ptr->sensor_orientation_), Eigen::Vector3f::UnitZ());
+    T_world_sensoryaw.translation() = pcl_cloud_ptr->sensor_origin_.head<3>();
+    // camera position, put behind the robot when we consider only sensor yaw
+    Eigen::Affine3f T_world_camera = T_world_sensoryaw * Eigen::Translation<float,3>(45,0,20);
+
+    // Add a new at current sensor pose. This creates a trail of frames
+    pcl_viewer_->addCoordinateSystem (1.0, T_world_sensor, "sensor_frame");
+    // Or alternativaly we can update the coordinate system, w/o leaving the trail
+    // pcl_viewer_->updateCoordinateSystemPose ("sensor_frame", T_world_sensor);
+
+    // Remove previous point cloud
+    if(pcd_count_ != 0) {
+      pcl_viewer_->removePointCloud("sample cloud");
+    }
+
+    // Add cloud
+    color_handler_.reset (new pcl::visualization::PointCloudColorHandlerGenericField<Point> (pcl_cloud_ptr, "z"));
+
+    pcl_viewer_->addPointCloud<Point> (pcl_cloud_ptr, *color_handler_, "sample cloud");
+    pcl_viewer_->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, point_size_, "sample cloud");
+
+    // Put the camera behind the robot, looking at the sensor origin, and upwards
+    pcl_viewer_->setCameraPosition (T_world_camera.translation()[0], // pos_x
+                                    T_world_camera.translation()[1], // pos_y
+                                    T_world_camera.translation()[2], // pos_z
+                                    T_world_sensoryaw.translation()[0], // view_x
+                                    T_world_sensoryaw.translation()[1], // view_y
+                                    T_world_sensoryaw.translation()[2], // view_z
+                                    0,  // up_x
+                                    0,  // up_y
+                                    1); // up_z
+
+    // Render
+    bool force_redraw = true;
+    pcl_viewer_->spinOnce (1, force_redraw);
+
+    // Save png
+    bfs::path png_path = png_dir_ / bfs::path(pcd_path).filename().replace_extension(".png");
+    pcl_viewer_->saveScreenshot(png_path.string());
+  }
 
   // Increment pcd counter
   pcd_count_++;

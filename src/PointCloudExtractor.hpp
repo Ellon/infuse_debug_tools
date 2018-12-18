@@ -13,12 +13,20 @@
 
 #include <boost/filesystem.hpp>
 
+#include <pcl/visualization/pcl_visualizer.h>
 
 namespace infuse_debug_tools {
 
 class PointCloudExtractor {
 public:
-  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic);
+  typedef pcl::PointXYZI Point;
+  typedef pcl::PointCloud<Point> PointCloud;
+  typedef pcl::visualization::PointCloudColorHandler<Point> ColorHandler;
+  typedef ColorHandler::Ptr ColorHandlerPtr;
+  typedef ColorHandler::ConstPtr ColorHandlerConstPtr;
+
+public:
+  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false);
   void Extract();
 
 private:
@@ -42,6 +50,16 @@ private:
   unsigned int length_pcd_filename_;
   //! Stream used to write the metadata file
   std::ofstream metadata_ofs_;
+  //! Store if we want to extract pngs using PCLVisualizer
+  bool extract_pngs_;
+  //! Viewer used to render pngs to be dumped
+  boost::shared_ptr<pcl::visualization::PCLVisualizer> pcl_viewer_;
+  //! Variable used to color pointclouds during png extraction
+  ColorHandlerPtr color_handler_;
+  //! Point size for PNG extraction
+  double point_size_;
+  //! Directory where to put the png files (set on Extract())
+  boost::filesystem::path png_dir_;
 };
 
 } // infuse_debug_tools

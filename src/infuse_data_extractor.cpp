@@ -13,7 +13,8 @@ int main(int argc, char **argv)
       ("help,h", "Display help")
       ("output-dir,o", bpo::value<std::string>(), "Directory where to put the extracted dataset")
       ("bags,b", bpo::value<std::vector<std::string>>()->multitoken()->composing(), "Bags composing the dataset")
-      ("topic,t", bpo::value<std::string>()->default_value("/velodyne/point_cloud"), "Point cloud topic");
+      ("topic,t", bpo::value<std::string>()->default_value("/velodyne/point_cloud"), "Point cloud topic")
+      ("png", bpo::bool_switch(), "Extract point cloud views as pngs (Warning: launches a PCLViewer window during extraction)");
 
     bpo::positional_options_description pos_desc;
     pos_desc.add("output-dir", 1).add("bags", -1);
@@ -48,7 +49,9 @@ int main(int argc, char **argv)
     infuse_debug_tools::PointCloudExtractor cloud_extractor{
       vm["output-dir"].as<std::string>(),
       vm["bags"].as<std::vector<std::string>>(),
-      vm["topic"].as<std::string>()};
+      vm["topic"].as<std::string>(),
+      vm["png"].as<bool>()
+    };
 
     cloud_extractor.Extract();
 

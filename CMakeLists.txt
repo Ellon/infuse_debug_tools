@@ -44,6 +44,7 @@ target_link_libraries(infuse_debug_tools
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 	${PCL_IO_LIBRARIES}
+	${PCL_VISUALIZATION_LIBRARIES}
 	infuse_asn1_types::infuse_asn1_types
 	infuse_asn1_conversions::base_conversions
 	infuse_asn1_conversions::pcl_conversions

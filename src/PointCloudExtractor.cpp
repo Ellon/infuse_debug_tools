@@ -114,7 +114,7 @@ void PointCloudExtractor::Extract()
   }
 
   // Setup progress display
-  std::cout << "Extracting " << n_point_clouds << " point clouds...";
+  std::cout << "Extracting " << n_point_clouds << " point clouds" << (extract_pngs_? " and PNG views" : "") << "...";
   boost::progress_display show_progress( n_point_clouds );
 
   // Loop over bags
@@ -135,6 +135,7 @@ void PointCloudExtractor::Extract()
     } catch (...) {
       // Assure the bags are closed if something goes wrong and re-trhow
       bag.close();
+      if (extract_pngs_)  pcl_viewer_->close();
       throw;
     }
 
@@ -202,15 +203,17 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
   // Handle PNG extraction
   if (extract_pngs_) {
     // Compute useful transformations
-    // sensor frame
+    // Sensor frame
     Eigen::Affine3f T_world_sensor;
     T_world_sensor = pcl_cloud_ptr->sensor_orientation_;
     T_world_sensor.translation() = pcl_cloud_ptr->sensor_origin_.head<3>();
-    // sensor frame but considering only yaw
+    // Sensor frame that considers only yaw
     Eigen::Affine3f T_world_sensoryaw;
     T_world_sensoryaw = Eigen::AngleAxis<float>(ASN1BitstreamLogger::Yaw(pcl_cloud_ptr->sensor_orientation_), Eigen::Vector3f::UnitZ());
     T_world_sensoryaw.translation() = pcl_cloud_ptr->sensor_origin_.head<3>();
-    // camera position, put behind the robot when we consider only sensor yaw
+    // Camera position, behind the robot and considering only sensor yaw
+    // (makes camera less shaky). Note that since the velodyne is mounted
+    // facing backwards, we preform a positive translation on sensor's X axis
     Eigen::Affine3f T_world_camera = T_world_sensoryaw * Eigen::Translation<float,3>(45,0,20);
 
     // Add a new at current sensor pose. This creates a trail of frames
@@ -225,7 +228,6 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
 
     // Add cloud
     color_handler_.reset (new pcl::visualization::PointCloudColorHandlerGenericField<Point> (pcl_cloud_ptr, "z"));
-
     pcl_viewer_->addPointCloud<Point> (pcl_cloud_ptr, *color_handler_, "sample cloud");
     pcl_viewer_->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, point_size_, "sample cloud");
 

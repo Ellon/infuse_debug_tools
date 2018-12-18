@@ -13,12 +13,14 @@ namespace bfs = boost::filesystem;
 namespace infuse_debug_tools
 {
 
-    PoseExtractor::PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic)
-    : output_dir_{output_dir},
-      bag_paths_{bag_paths},
+    PoseExtractor::PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic, const std::string &pose_source)
+    : bag_paths_{bag_paths},
       pose_topic_{pose_topic},
+      pose_source_{pose_source},
       asn1_pose_ptr_{std::make_unique<asn1SccTransformWithCovariance>()}
-      {}
+    {
+        output_dir_ = output_dir + "/poses";
+    }
 
     void PoseExtractor::Extract()
     {
@@ -54,7 +56,8 @@ namespace infuse_debug_tools
         }
         dataformat_ofs.close();
 
-        metadata_ofs_.open((output_dir_ / "metadata.txt").string());
+        std::string filename = pose_source_ + ".txt";
+        metadata_ofs_.open((output_dir_ / filename).string());
 
         std::vector<std::string> topics = {pose_topic_};
 

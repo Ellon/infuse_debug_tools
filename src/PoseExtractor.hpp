@@ -15,7 +15,7 @@ namespace infuse_debug_tools {
 
 class PoseExtractor{
     public:
-    PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic);
+    PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic, const std::string &pose_source);
     void Extract();
 
     private:
@@ -25,6 +25,7 @@ class PoseExtractor{
     boost::filesystem::path output_dir_;
     std::vector<std::string> bag_paths_;
     std::string pose_topic_;
+    std::string pose_source_;
     boost::filesystem::path data_dir_;
     std::unique_ptr<asn1SccTransformWithCovariance> asn1_pose_ptr_;
 

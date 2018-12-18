@@ -32,6 +32,7 @@ add_library(infuse_debug_tools
 	src/asn1_bitstream_transform_processer.cpp
 	src/asn1_bitstream_logger.cpp
 	src/PointCloudExtractor.cpp
+        src/PoseExtractor.cpp
 )
 target_include_directories(infuse_debug_tools
 	PUBLIC

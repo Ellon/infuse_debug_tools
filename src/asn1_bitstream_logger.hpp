@@ -8,7 +8,6 @@
 #include <infuse_asn1_types/TransformWithCovariance.h>
 #include <infuse_asn1_types/Pointcloud.h>
 
-
 #include <Eigen/Geometry>
 
 namespace infuse_debug_tools {
@@ -22,10 +21,40 @@ public:
   static void LogPointcloud(const asn1SccPointcloud & cloud, std::ofstream & ofs);
   static std::vector<std::string> GetPointcloudLogEntries(std::string prefix = "");
 
-private:
-  static double Yaw(const Eigen::Quaterniond & quat);
-  static double Pitch(const Eigen::Quaterniond & quat);
-  static double Roll(const Eigen::Quaterniond & quat);
+  template<typename T>
+  static T Yaw(const Eigen::Quaternion<T> & quat)
+  {
+    T yaw;
+    // yaw (z-axis rotation)
+    T siny = +2.0 * (quat.w() * quat.z() + quat.x() * quat.y());
+    T cosy = +1.0 - 2.0 * (quat.y() * quat.y() + quat.z() * quat.z());  
+    yaw = atan2(siny, cosy);
+    return yaw;
+  }
+
+  template<typename T>
+  static T Pitch(const Eigen::Quaternion<T> & quat)
+  {
+    T pitch;
+    // pitch (y-axis rotation)
+    T sinp = +2.0 * (quat.w() * quat.y() - quat.z() * quat.x());
+    if (fabs(sinp) >= 1)
+      pitch = copysign(M_PI / 2, sinp); // use 90 degrees if out of range
+    else
+      pitch = asin(sinp);
+    return pitch;
+  }
+
+  template<typename T>
+  static T Roll(const Eigen::Quaternion<T> & quat)
+  {
+    T roll;
+    // roll (x-axis rotation)
+    T sinr = +2.0 * (quat.w() * quat.x() + quat.y() * quat.z());
+    T cosr = +1.0 - 2.0 * (quat.x() * quat.x() + quat.y() * quat.y());
+    roll = atan2(sinr, cosr);
+    return roll;
+  }
 
 };
 

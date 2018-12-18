@@ -56,36 +56,4 @@ std::vector<std::string> ASN1BitstreamLogger::GetPointcloudLogEntries(std::strin
   return std::move(entries);
 }
 
-double ASN1BitstreamLogger::Yaw(const Eigen::Quaterniond & quat)
-{
-  double yaw;
-  // yaw (z-axis rotation)
-  double siny = +2.0 * (quat.w() * quat.z() + quat.x() * quat.y());
-  double cosy = +1.0 - 2.0 * (quat.y() * quat.y() + quat.z() * quat.z());  
-  yaw = atan2(siny, cosy);
-  return yaw;
-}
-
-double ASN1BitstreamLogger::Pitch(const Eigen::Quaterniond & quat)
-{
-  double pitch;
-  // pitch (y-axis rotation)
-  double sinp = +2.0 * (quat.w() * quat.y() - quat.z() * quat.x());
-  if (fabs(sinp) >= 1)
-    pitch = copysign(M_PI / 2, sinp); // use 90 degrees if out of range
-  else
-    pitch = asin(sinp);
-  return pitch;
-}
-
-double ASN1BitstreamLogger::Roll(const Eigen::Quaterniond & quat)
-{
-  double roll;
-  // roll (x-axis rotation)
-  double sinr = +2.0 * (quat.w() * quat.x() + quat.y() * quat.z());
-  double cosr = +1.0 - 2.0 * (quat.x() * quat.x() + quat.y() * quat.y());
-  roll = atan2(sinr, cosr);
-  return roll;
-}
-
 } // infuse_debug_tools

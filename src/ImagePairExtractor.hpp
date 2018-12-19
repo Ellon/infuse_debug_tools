@@ -36,10 +36,13 @@ private:
   boost::filesystem::path right_data_dir_;
   //! Variable used to decode the ASN1 message into.
   std::unique_ptr<asn1SccFramePair> asn1_frame_pair_ptr_;
-  //! Counter for the number of images files written. Used to create the pcd filename
-  size_t image_count_;
   //! Number of characters to be used when creating pcd filename
   unsigned int length_img_filename_;
+  //! Counter for the number of images files written. Used to create the pcd filename
+  size_t image_count_;
+  //! Max value for image_count_, computed from length_img_filename_ in the constructor
+  size_t image_max_;
+  //! Extension used to save the image files
   std::string img_extension_;
   //! Stream used to write the metadata file
   // std::ofstream metadata_ofs_;

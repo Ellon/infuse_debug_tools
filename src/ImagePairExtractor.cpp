@@ -21,8 +21,9 @@ ImagePairExtractor::ImagePairExtractor(const std::string &output_dir, const std:
     bag_paths_{bag_paths},
     image_topic_{image_topic},
     asn1_frame_pair_ptr_{std::make_unique<asn1SccFramePair>()},
-    image_count_{0},
     length_img_filename_{5},
+    image_count_{0},
+    image_max_{std::stoul(std::string("1") + std::string(length_img_filename_, '0')) - 1},
     img_extension_{img_extension}
 {
 }
@@ -130,6 +131,10 @@ void ImagePairExtractor::Extract()
 
 void ImagePairExtractor::ProcessImagePair(const infuse_msgs::asn1_bitstream::Ptr& msg)
 {
+  // Guard against overflow on the filename numbers
+  if (image_count_ > image_max_)
+    throw std::runtime_error("Overflow on the image filename counter. Please increase the number of characters to be used to compose the filename");
+
   // Initialize asn1 point cloud to be sure we have clean object.
   asn1SccFramePair_Initialize(asn1_frame_pair_ptr_.get());
 

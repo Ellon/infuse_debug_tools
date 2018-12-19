@@ -1,5 +1,6 @@
 #include "PointCloudExtractor.hpp"
 #include "ImagePairExtractor.hpp"
+#include "PoseExtractor.hpp"
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -13,6 +14,18 @@ void print_usage(int argc, char **argv, const bpo::options_description &desc)
   std::cout << "  " << argv[0] << " { --velodyne | --front | --nav | --rear } ... <output-dir> <bag1> ... <bagN>" << '\n';
   std::cout << desc << '\n';
 }
+
+namespace std
+{
+  std::ostream& operator<<(std::ostream &os, const std::vector<std::string> &vec) 
+  {    
+    for (auto item : vec) 
+    { 
+      os << item << " "; 
+    } 
+    return os; 
+  }
+} 
 
 int main(int argc, char **argv)
 {
@@ -35,6 +48,9 @@ int main(int argc, char **argv)
       ("rear,r", bpo::bool_switch(), "Extract rear cam images")
       ("rear-topic", bpo::value<std::string>()->default_value("/RearCam/Stereo"), "Rear cam stereo pair topic")
       ("rear-ext", bpo::value<std::string>()->default_value("pgm"), "File extension for the Rear cam data")
+      ("poses", bpo::bool_switch(), "Extract poses")
+      ("pose-topics,pt", bpo::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>{"/pose_robot_pom","/bestutm_infuse","/rmp400/PoseInfuse"}), "Pose topics")
+      ("pose-sources,ps",bpo::value<std::vector<std::string>>()->multitoken()->default_value({"tokamak","gps","rmp"}),"Poses sources")
       ;
 
     bpo::positional_options_description pos_desc;
@@ -65,7 +81,8 @@ int main(int argc, char **argv)
     if (not vm["velodyne"].as<bool>() and
         not vm["front"].as<bool>() and
         not vm["nav"].as<bool>() and
-        not vm["rear"].as<bool>()) {
+        not vm["rear"].as<bool>() and
+        not vm["poses"].as<bool>()){
      std::cout << "Error: Extraction not informed. Please inform at least one data type to extact." << '\n';
       print_usage(argc, argv, desc);
       return 1;
@@ -119,6 +136,17 @@ int main(int argc, char **argv)
         };
         cam_extractor.Extract();
       }
+    }
+
+    if (vm["poses"].as<bool>())
+    {
+        infuse_debug_tools::PoseExtractor pose_extractor{
+            vm["output-dir"].as<std::string>(),
+            vm["bags"].as<std::vector<std::string>>(),
+            vm["pose-topics"].as<std::vector<std::string>>(),
+            vm["pose-sources"].as<std::vector<std::string>>(),
+        };
+        pose_extractor.Extract();
     }
 
   } catch (const bpo::error &ex) {

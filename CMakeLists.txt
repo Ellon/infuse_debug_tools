@@ -11,7 +11,7 @@ find_package(infuse_asn1_conversions REQUIRED)
 find_package(PCL 1.7.1 REQUIRED )
 find_package(Eigen3 REQUIRED)
 find_package(Boost REQUIRED COMPONENTS filesystem timer program_options)
-
+find_package(OpenCV REQUIRED)
 
 add_service_files(
   FILES
@@ -32,7 +32,8 @@ add_library(infuse_debug_tools
 	src/asn1_bitstream_transform_processer.cpp
 	src/asn1_bitstream_logger.cpp
 	src/PointCloudExtractor.cpp
-        src/PoseExtractor.cpp
+	src/PoseExtractor.cpp
+	src/ImagePairExtractor.cpp
 )
 target_include_directories(infuse_debug_tools
 	PUBLIC
@@ -40,12 +41,14 @@ target_include_directories(infuse_debug_tools
 	${Boost_INCLUDE_DIRS}
 	${EIGEN3_INCLUDE_DIRS}
 	${PCL_INCLUDE_DIRS}
+	${OpenCV_INCLUDE_DIRS}
 )
 target_link_libraries(infuse_debug_tools
 	${Boost_LIBRARIES}
 	${catkin_LIBRARIES}
 	${PCL_IO_LIBRARIES}
 	${PCL_VISUALIZATION_LIBRARIES}
+	${OpenCV_LIBS}
 	infuse_asn1_types::infuse_asn1_types
 	infuse_asn1_conversions::base_conversions
 	infuse_asn1_conversions::pcl_conversions

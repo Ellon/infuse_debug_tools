@@ -78,6 +78,7 @@ void PointCloudExtractor::Extract()
   lambda_create_subdir(output_dir_);
   // Create subdirs
   data_dir_     = lambda_create_subdir(output_dir_, "data");
+  metadata_dir_ = lambda_create_subdir(output_dir_, "metadata");
   png_dir_      = lambda_create_subdir(output_dir_, "pngs");
 
   // Write dataformat file. The rationalle of keeping the dataformat separated
@@ -95,7 +96,7 @@ void PointCloudExtractor::Extract()
   dataformat_ofs.close();
 
   // Setup metadata file
-  metadata_ofs_.open((output_dir_ / "metadata.txt").string());
+  metadata_ofs_.open((output_dir_ / "all_metadata.txt").string());
 
   // Setup png extraction if needed
   if (extract_pngs_) {
@@ -249,9 +250,15 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
   // Increment pcd counter
   pcd_count_++;
 
-  // Log metadata
+  // Log metadata in the common file
   ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, metadata_ofs_);
   metadata_ofs_ << '\n';
+
+  // Log metadata of this cloud in a separated file
+  bfs::path metadata_path = metadata_dir_ / bfs::path(pcd_path).filename().replace_extension(".txt");
+  std::ofstream pcd_metadata_ofs(metadata_path.string());
+  ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, pcd_metadata_ofs);
+  pcd_metadata_ofs.close();
 
 }
 

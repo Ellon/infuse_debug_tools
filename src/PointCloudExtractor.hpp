@@ -42,6 +42,8 @@ private:
   std::string point_cloud_topic_;
   //! Directory where to put the pcd files (set on Extract())
   boost::filesystem::path data_dir_;
+  //! Directory where to put the metadata related to the pcd files (set on Extract())
+  boost::filesystem::path metadata_dir_;
   //! Variable used to decode the ASN1 message into.
   std::unique_ptr<asn1SccPointcloud> asn1_pointcloud_ptr_;
   //! Number of characters to be used when creating pcd filename

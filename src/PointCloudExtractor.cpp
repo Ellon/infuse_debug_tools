@@ -32,6 +32,24 @@ PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const st
 
 void PointCloudExtractor::Extract()
 {
+  // Vector of topics used to create a view on the bag
+  std::vector<std::string> topics = {point_cloud_topic_};
+
+  // Get the number of clouds to process
+  size_t n_point_clouds = 0;
+  for (auto bag_path : bag_paths_) {
+    rosbag::Bag bag(bag_path); // bagmode::Read by default
+    rosbag::View view(bag, rosbag::TopicQuery(topics));
+    n_point_clouds += view.size();
+    bag.close();
+  }
+
+  // Stop here if there's nothing on the topic
+  if (n_point_clouds == 0) {
+    std::cout << "Warning: Nothing to extract on topic " << point_cloud_topic_ << std::endl;
+    return;
+  }
+
   // Makes sure the output dir does not already exists
   if (bfs::exists(output_dir_)) {
     std::stringstream ss;
@@ -93,18 +111,6 @@ void PointCloudExtractor::Extract()
 
   // Setup metadata file
   metadata_ofs_.open((output_dir_ / "metadata.txt").string());
-
-  // Vector of topics used to create a view on the bag
-  std::vector<std::string> topics = {point_cloud_topic_};
-
-  // Get the number of clouds to process (only used to create the progress display)
-  size_t n_point_clouds = 0;
-  for (auto bag_path : bag_paths_) {
-    rosbag::Bag bag(bag_path); // bagmode::Read by default
-    rosbag::View view(bag, rosbag::TopicQuery(topics));
-    n_point_clouds += view.size();
-    bag.close();
-  }
 
   // Setup png extraction if needed
   if (extract_pngs_) {

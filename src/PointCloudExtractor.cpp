@@ -21,8 +21,9 @@ PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const st
     bag_paths_{bag_paths},
     point_cloud_topic_{point_cloud_topic},
     asn1_pointcloud_ptr_{std::make_unique<asn1SccPointcloud>()},
-    pcd_count_{0},
     length_pcd_filename_{5},
+    pcd_count_{0},
+    pcd_max_{std::stoul(std::string("1") + std::string(length_pcd_filename_, '0')) - 1},
     extract_pngs_{extract_pngs},
     pcl_viewer_{nullptr},
     color_handler_{nullptr},
@@ -159,8 +160,8 @@ void PointCloudExtractor::Extract()
 void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::Ptr& msg)
 {
   // Guard against overflow on the filename numbers
-  if (pcd_count_ >= std::pow(10, length_pcd_filename_))
-    throw std::runtime_error("Overflow on the filename counter. Please increase the number of characters to be used to compose the filename");
+  if (pcd_count_ > pcd_max_)
+    throw std::runtime_error("Overflow on the pcd filename counter. Please increase the number of characters to be used to compose the filename");
 
   // Initialize asn1 point cloud to be sure we have clean object.
   asn1SccPointcloud_Initialize(asn1_pointcloud_ptr_.get());

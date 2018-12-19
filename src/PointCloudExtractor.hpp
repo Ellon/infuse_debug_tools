@@ -44,10 +44,12 @@ private:
   boost::filesystem::path data_dir_;
   //! Variable used to decode the ASN1 message into.
   std::unique_ptr<asn1SccPointcloud> asn1_pointcloud_ptr_;
-  //! Counter for the number of pcd files written. Used to create the pcd filename
-  size_t pcd_count_;
   //! Number of characters to be used when creating pcd filename
   unsigned int length_pcd_filename_;
+  //! Counter for the number of pcd files written. Used to create the pcd filename
+  size_t pcd_count_;
+  //! Max value for pcd_count_, computed from length_pcd_filename_ in the constructor
+  size_t pcd_max_;
   //! Stream used to write the metadata file
   std::ofstream metadata_ofs_;
   //! Store if we want to extract pngs using PCLVisualizer

@@ -1,0 +1,28 @@
+<launch>
+
+  <arg name="bag" doc="absolute path to bag to be replayed"/>
+
+  <!-- If we want to use simulated time -->
+  <param name="use_sim_time" value="false" />  
+
+  <node pkg="infuse_debug_tools" name="asn1_bitstream_to_image" type="asn1_bitstream_to_image_node" output="screen">
+
+    <param name="publish_asn1_time" value="true" />
+    <param name="publish_poses" value="false" />
+    <param name="topics_to_connect" value="/NavCam/Stereo" />
+    
+  </node>
+
+<!--  <node pkg="tf2_ros" name="Kesskess_broadcaster" type="static_transform_publisher" output="screen" args="3003.856 -9232.7467 -10.0525 0 0 0 LocalTerrainFrame KessKessGPS" />  -->
+
+<!--   <node pkg="tf2_ros" name="LAASParking_broadcaster" type="static_transform_publisher" output="screen" args="-745.395003 375.152327 -1.494203 0 0 0 LocalTerrainFrame LAASParking" />   -->
+
+<!--   <node pkg="tf2_ros" name="RoverBodyFrame_RoverBaseFrame_fix" type="static_transform_publisher" output="screen" args="0 0 0 0 0 0 RoverBodyFrame RoverBaseFrame" />   -->
+
+<!--   <node pkg="tf2_ros" name="Velodyne_velodyne_fix" type="static_transform_publisher" output="screen" args="0 0 0 0 0 0 Velodyne velodyne" />   -->
+
+<!--  <node pkg="rosbag" name="rosbag_play" type="play" output="screen" args=" -l -clock -d 5 $(arg bag)" /> -->
+
+<!--  <node pkg="rviz" name="rviz" type="rviz" args="-d $(find infuse_debug_tools)/rviz/debug_velodyne.rviz"/> -->
+
+</launch>

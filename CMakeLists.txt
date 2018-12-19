@@ -142,4 +142,19 @@ target_include_directories(infuse_data_extractor
 target_link_libraries(infuse_data_extractor
 	${Boost_LIBRARIES}
 	infuse_debug_tools
+
+## asn1_bitstream_to_image
+add_executable(asn1_bitstream_to_image_node src/asn1_bitstream_to_img.cpp)
+target_include_directories(asn1_bitstream_to_image_node
+        PUBLIC
+	${catkin_INCLUDE_DIRS}
+)
+message(WARNING "catkin_LIBRARIES = ${catkin_LIBRARIES}")
+target_link_libraries(asn1_bitstream_to_image_node
+        ${catkin_LIBRARIES}
+	infuse_debug_tools
+	#${PCL_IO_LIBRARIES}
+	infuse_asn1_types::infuse_asn1_types
+	infuse_asn1_conversions::base_conversions
+	#infuse_asn1_conversions::ros_conversions
 )

@@ -12,7 +12,7 @@
 #include <infuse_debug_tools/ConnectTopic.h>
 
 #include <sensor_msgs/Image.h>
-
+#include <Eigen/Core>
 #include "asn1_bitstream_transform_processer.hpp"
 
 
@@ -23,7 +23,22 @@ void fromASN1SCC(const asn1SccFramePair& image, sensor_msgs::Image& msg_image_le
 
 	//not sure anything below is gonna work neither
 	//fromASN1SCC(image.msgVersion, msg_image_left.header.frame_id);
-
+	std::cout<<"LEFT MATRIX";
+	for(int i = 0; i<3; i++){
+		for(int j = 0; j<3; j++){
+			std::cout<<image.left.intrinsic.cameraMatrix.arr[i].arr[j]<< " ";
+		}
+	}
+	std::cout<<std::endl;
+	std::cout<<"RIGHT MATRIX\n";
+	for(int i = 0; i<3; i++){
+		for(int j = 0; j<3; j++){
+			std::cout<<image.right.intrinsic.cameraMatrix.arr[i].arr[j]<< " ";
+		}
+		std::cout<<std::endl;
+	}
+	std::cout<<"BASELINE\n";
+	std::cout<<image.baseline<<std::endl;
 	msg_image_left.width = image.left.data.cols;
 	msg_image_left.height = image.left.data.rows;
 
@@ -31,7 +46,7 @@ void fromASN1SCC(const asn1SccFramePair& image, sensor_msgs::Image& msg_image_le
 
 	msg_image_left.is_bigendian = true; //or false?
 
-	msg_image_left.step = 8*msg_image_left.height;
+	msg_image_left.step = msg_image_left.width;
 
 	msg_image_left.data.resize(image.left.data.data.nCount);
 
@@ -66,7 +81,7 @@ void fromASN1SCC(const asn1SccFramePair& image, sensor_msgs::Image& msg_image_le
 
 	msg_image_right.is_bigendian = true; //or false?
 
-	msg_image_right.step = 8*msg_image_right.height;
+	msg_image_right.step = msg_image_right.width;
 
 	msg_image_right.data.resize(image.right.data.data.nCount);
 

@@ -9,7 +9,7 @@
 
     <param name="publish_asn1_time" value="true" />
     <param name="publish_poses" value="false" />
-    <param name="topics_to_connect" value="/NavCam/Stereo" />
+    <param name="topics_to_connect" value="/NavCam/Stereo/Rectified" />
     
   </node>
 

@@ -63,38 +63,22 @@ void PointCloudExtractor::Extract()
     throw std::runtime_error(ss.str());
   }
 
+  // Lambda function that creates a directory (or subdir inside dir if specified).
+  auto lambda_create_subdir = [](bfs::path dir, std::string subdir = "") -> bfs::path {
+    bfs::path dirpath = dir / subdir;
+    bool dir_created = bfs::create_directory(dirpath);
+    if (not dir_created) {
+      std::stringstream ss;
+      ss << "Could not create \"" << dirpath.string() << "\" directory.";
+      throw std::runtime_error(ss.str());
+    }
+    return dirpath;
+  };
   // Create output dir
-  {
-    bool dir_created = bfs::create_directory(output_dir_);
-    if (not dir_created) {
-      std::stringstream ss;
-      ss << "Could not create \"" << output_dir_.string() << "\" directory.";
-      throw std::runtime_error(ss.str());
-    }
-  }
-
-  // Create data dir, used to put the pcd files
-  {
-    data_dir_ = output_dir_ / "data";
-    bool dir_created = bfs::create_directory(data_dir_);
-    if (not dir_created) {
-      std::stringstream ss;
-      ss << "Could not create \"" << data_dir_.string() << "\" directory.";
-      throw std::runtime_error(ss.str());
-    }
-  }
-
-  // Create png dir
-  if (extract_pngs_) {
-    png_dir_ = output_dir_ / "pngs";
-    bool dir_created = bfs::create_directory(png_dir_);
-    if (not dir_created) {
-      std::stringstream ss;
-      ss << "Could not create \"" << png_dir_.string() << "\" directory.";
-      throw std::runtime_error(ss.str());
-    }
-  }
-
+  lambda_create_subdir(output_dir_);
+  // Create subdirs
+  data_dir_     = lambda_create_subdir(output_dir_, "data");
+  png_dir_      = lambda_create_subdir(output_dir_, "pngs");
 
   // Write dataformat file. The rationalle of keeping the dataformat separated
   // from the metadata is that this way it is possible to associate the cloud

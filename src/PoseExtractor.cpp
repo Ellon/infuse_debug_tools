@@ -13,13 +13,17 @@ namespace bfs = boost::filesystem;
 namespace infuse_debug_tools
 {
 
-    PoseExtractor::PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic, const std::string &pose_source)
+    PoseExtractor::PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::vector<std::string> &pose_topic, const std::vector<std::string> &pose_source)
     : bag_paths_{bag_paths},
       pose_topic_{pose_topic},
       pose_source_{pose_source},
       asn1_pose_ptr_{std::make_unique<asn1SccTransformWithCovariance>()}
     {
         output_dir_ = output_dir + "/poses";
+        for (int i = 0; i < pose_topic_.size(); i++)
+        {
+            association.insert(std::pair<std::string,int>(pose_topic_[i],i));
+        }
     }
 
     void PoseExtractor::Extract()
@@ -56,10 +60,14 @@ namespace infuse_debug_tools
         }
         dataformat_ofs.close();
 
-        std::string filename = pose_source_ + ".txt";
-        metadata_ofs_.open((output_dir_ / filename).string());
+        for (int i = 0; i < pose_topic_.size(); i++)
+        {
+            std::string filename = pose_source_[i] + ".txt";
+            metadata_ofs_.push_back(new std::ofstream);
+            metadata_ofs_[i]->open((output_dir_ / filename).string());
+        }
 
-        std::vector<std::string> topics = {pose_topic_};
+        std::vector<std::string> topics = pose_topic_;
 
         size_t n_poses = 0;
 
@@ -90,7 +98,7 @@ namespace infuse_debug_tools
                     infuse_msgs::asn1_bitstream::Ptr i = m.instantiate<infuse_msgs::asn1_bitstream>();
                     if (i != nullptr) 
                     {
-                        ProcessPose(i);
+                        ProcessPose(i,association[m.getTopic()]);
                         ++show_progress; // Update progress display
                     } 
                     else
@@ -105,10 +113,13 @@ namespace infuse_debug_tools
             bag.close();
         } // for bags
 
-        metadata_ofs_.close();
+        for (int i = 0; i < pose_topic_.size(); i++)
+        {
+            metadata_ofs_[i]->close();
+        }
     }
 
-    void PoseExtractor::ProcessPose(const infuse_msgs::asn1_bitstream::Ptr &msg)
+    void PoseExtractor::ProcessPose(const infuse_msgs::asn1_bitstream::Ptr &msg,int fileNumber)
     {
         // Initialize asn1 pose to be sure we have a clean object.
         asn1SccTransformWithCovariance_Initialize(asn1_pose_ptr_.get());
@@ -126,7 +137,7 @@ namespace infuse_debug_tools
             throw std::runtime_error(ss.str());
         }
 
-        ASN1BitstreamLogger::LogTransformWithCovariance(*asn1_pose_ptr_,metadata_ofs_);
-        metadata_ofs_ << '\n';
+        ASN1BitstreamLogger::LogTransformWithCovariance(*asn1_pose_ptr_,*(metadata_ofs_[fileNumber]));
+        *(metadata_ofs_[fileNumber]) << '\n';
     }
 }

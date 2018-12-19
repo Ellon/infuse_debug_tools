@@ -15,21 +15,22 @@ namespace infuse_debug_tools {
 
 class PoseExtractor{
     public:
-    PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic, const std::string &pose_source);
+    PoseExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::vector<std::string> &pose_topic, const std::vector<std::string> &pose_source);
     void Extract();
 
     private:
-    void ProcessPose(const infuse_msgs::asn1_bitstream::Ptr& msg);
+    void ProcessPose(const infuse_msgs::asn1_bitstream::Ptr& msg, int fileNumber);
 
     private:
     boost::filesystem::path output_dir_;
     std::vector<std::string> bag_paths_;
-    std::string pose_topic_;
-    std::string pose_source_;
+    std::vector<std::string> pose_topic_;
+    std::vector<std::string> pose_source_;
     boost::filesystem::path data_dir_;
     std::unique_ptr<asn1SccTransformWithCovariance> asn1_pose_ptr_;
+    std::map<std::string,int> association;
 
-    std::ofstream metadata_ofs_;
+    std::vector<std::ofstream *> metadata_ofs_;
 };
 
 }

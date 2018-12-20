@@ -11,7 +11,7 @@ namespace bfs = boost::filesystem;
 void print_usage(int argc, char **argv, const bpo::options_description &desc)
 {
   std::cout << "Usage:" << '\n';
-  std::cout << "  " << argv[0] << " {-vfnrp} ... <output-dir> <bag1> ... <bagN>" << "\n\n";
+  std::cout << "  " << argv[0] << " {-avfnrp} ... <output-dir> <bag1> ... <bagN>" << "\n\n";
   std::cout << desc << '\n';
 }
 
@@ -33,6 +33,7 @@ int main(int argc, char **argv)
     // Parse program options
     bpo::options_description extraction{"Extraction options"};
     extraction.add_options()
+      ("all,a", bpo::bool_switch(), "Extract all data")
       ("velodyne,v", bpo::bool_switch(), "Extract velodyne point clouds")
       ("front,f", bpo::bool_switch(), "Extract front cam images")
       ("nav,n", bpo::bool_switch(), "Extract nav cam images")
@@ -108,7 +109,8 @@ int main(int argc, char **argv)
     }
 
     // Makes sure we have at least one extraction informed
-    if (not vm["velodyne"].as<bool>() and
+    if (not vm["all"].as<bool>() and
+        not vm["velodyne"].as<bool>() and
         not vm["front"].as<bool>() and
         not vm["nav"].as<bool>() and
         not vm["rear"].as<bool>() and
@@ -141,7 +143,7 @@ int main(int argc, char **argv)
       }
     }
 
-    if (vm["velodyne"].as<bool>()) {
+    if (vm["all"].as<bool>() or vm["velodyne"].as<bool>()) {
       // Create the extractor and extract clouds.
       bfs::path velodyne_output_dir = output_dir / "velodyne";
       infuse_debug_tools::PointCloudExtractor cloud_extractor{
@@ -155,7 +157,7 @@ int main(int argc, char **argv)
 
     std::array<std::string, 3> cam_names = {"front", "nav", "rear"};
     for (const auto & cam_name : cam_names) {
-      if (vm[cam_name].as<bool>()) {
+      if (vm["all"].as<bool>() or vm[cam_name].as<bool>()) {
         // Create the cam extractor and extract images.
         bfs::path cam_output_dir = output_dir / (cam_name + "_cam");
         infuse_debug_tools::ImagePairExtractor cam_extractor{
@@ -168,7 +170,7 @@ int main(int argc, char **argv)
       }
     }
 
-    if (vm["poses"].as<bool>())
+    if (vm["all"].as<bool>() or vm["poses"].as<bool>())
     {
         infuse_debug_tools::PoseExtractor pose_extractor{
             vm["output-dir"].as<std::string>(),

@@ -79,7 +79,8 @@ void PointCloudExtractor::Extract()
   // Create subdirs
   data_dir_     = lambda_create_subdir(output_dir_, "data");
   metadata_dir_ = lambda_create_subdir(output_dir_, "metadata");
-  png_dir_      = lambda_create_subdir(output_dir_, "pngs");
+  if (extract_pngs_)
+    png_dir_      = lambda_create_subdir(output_dir_, "pngs");
 
   // Write dataformat file. The rationalle of keeping the dataformat separated
   // from the metadata is that this way it is possible to associate the cloud

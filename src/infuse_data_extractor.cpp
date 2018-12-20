@@ -11,7 +11,7 @@ namespace bfs = boost::filesystem;
 void print_usage(int argc, char **argv, const bpo::options_description &desc)
 {
   std::cout << "Usage:" << '\n';
-  std::cout << "  " << argv[0] << " { --velodyne | --front | --nav | --rear | --poses } ... <output-dir> <bag1> ... <bagN>" << '\n';
+  std::cout << "  " << argv[0] << " {-vfnrp} ... <output-dir> <bag1> ... <bagN>" << "\n\n";
   std::cout << desc << '\n';
 }
 
@@ -31,40 +31,70 @@ int main(int argc, char **argv)
 {
   try {
     // Parse program options
-    bpo::options_description desc{"Options"};
-    desc.add_options()
-      ("help,h", "Display help")
-      ("output-dir,o", bpo::value<std::string>(), "Directory where to put the extracted dataset")
-      ("bags,b", bpo::value<std::vector<std::string>>()->multitoken()->composing(), "Bags composing the dataset")
+    bpo::options_description extraction{"Extraction options"};
+    extraction.add_options()
       ("velodyne,v", bpo::bool_switch(), "Extract velodyne point clouds")
+      ("front,f", bpo::bool_switch(), "Extract front cam images")
+      ("nav,n", bpo::bool_switch(), "Extract nav cam images")
+      ("rear,r", bpo::bool_switch(), "Extract rear cam images")
+      ("poses,p", bpo::bool_switch(), "Extract poses")
+      ;
+
+    bpo::options_description velodyne{"Velodyne specific options"};
+    velodyne.add_options()
       ("velodyne-topic", bpo::value<std::string>()->default_value("/velodyne/point_cloud"), "Velodyne point cloud topic")
       ("velodyne-png", bpo::bool_switch(), "Extract point cloud views as pngs (Warning: this launches a PCLViewer window during extraction)")
-      ("front,f", bpo::bool_switch(), "Extract front cam images")
+      ;
+
+    bpo::options_description cam{"Camera specific options"};
+    cam.add_options()
       ("front-topic", bpo::value<std::string>()->default_value("/FrontCam/Stereo"), "Front cam stereo pair topic")
       ("front-ext", bpo::value<std::string>()->default_value("pgm"), "File extension for the Front cam data")
-      ("nav,n", bpo::bool_switch(), "Extract nav cam images")
       ("nav-topic", bpo::value<std::string>()->default_value("/NavCam/Stereo"), "Nav cam stereo pair topic")
       ("nav-ext", bpo::value<std::string>()->default_value("pgm"), "File extension for the Nav cam data")
-      ("rear,r", bpo::bool_switch(), "Extract rear cam images")
       ("rear-topic", bpo::value<std::string>()->default_value("/RearCam/Stereo"), "Rear cam stereo pair topic")
       ("rear-ext", bpo::value<std::string>()->default_value("pgm"), "File extension for the Rear cam data")
-      ("poses,p", bpo::bool_switch(), "Extract poses")
+      ;
+
+    bpo::options_description poses{"Pose specific options"};
+    poses.add_options()
       ("pose-topics", bpo::value<std::vector<std::string>>()->multitoken()->default_value(std::vector<std::string>{"/pose_robot_pom","/bestutm_infuse","/rmp400/PoseInfuse"}), "Pose topics")
       ("pose-sources",bpo::value<std::vector<std::string>>()->multitoken()->default_value({"tokamak","gps","rmp"}),"Poses sources")
       ;
 
-    bpo::positional_options_description pos_desc;
-    pos_desc.add("output-dir", 1).add("bags", -1);
+    // Backend options will be hidden from the user
+    bpo::options_description backend{"Backend Options"};
+    backend.add_options()
+      ("output-dir", bpo::value<std::string>(), "Directory where to put the extracted dataset")
+      ("bags", bpo::value<std::vector<std::string>>()->multitoken()->composing(), "Bags composing the dataset")
+      ;
+    // Positional options to capture backend options
+    bpo::positional_options_description pos_backend;
+    pos_backend.add("output-dir", 1).add("bags", -1);
+
+    // All options, used for parsing
+    bpo::options_description all("General options");
+    all.add(extraction).add(velodyne).add(cam).add(poses).add(backend);
+    all.add_options()
+      ("help,h", "Display help")
+      ;
+
+    // Only the options that should be visible to the user
+    bpo::options_description visible("General options");
+    visible.add(extraction).add(velodyne).add(cam).add(poses);
+    visible.add_options()
+      ("help,h", "Display help")
+      ;
 
     bpo::command_line_parser parser{argc, argv};
-    parser.options(desc).positional(pos_desc);
+    parser.options(all).positional(pos_backend);
 
     bpo::variables_map vm;
     bpo::store(parser.run(), vm);
     bpo::notify(vm);
 
     if (vm.count("help")) {
-      print_usage(argc, argv, desc);
+      print_usage(argc, argv, visible);
       return 0;
     }
 
@@ -73,7 +103,7 @@ int main(int argc, char **argv)
         std::cout << "Error: Output directory is missing." << '\n';
       if (not vm.count("bags")) 
         std::cout << "Error: Bag files are missing." << '\n';
-      print_usage(argc, argv, desc);
+      print_usage(argc, argv, visible);
       return 1;
     }
 
@@ -83,8 +113,8 @@ int main(int argc, char **argv)
         not vm["nav"].as<bool>() and
         not vm["rear"].as<bool>() and
         not vm["poses"].as<bool>()){
-     std::cout << "Error: Extraction not informed. Please inform at least one data type to extact." << '\n';
-      print_usage(argc, argv, desc);
+     std::cout << "Error: Extraction option not informed. Please use at least one extraction option." << '\n';
+      print_usage(argc, argv, visible);
       return 1;
     }
 

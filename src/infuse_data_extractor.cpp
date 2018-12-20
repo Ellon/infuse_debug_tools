@@ -123,11 +123,11 @@ int main(int argc, char **argv)
     if (bfs::exists(output_dir)) {
       std::stringstream ss;
       if (bfs::is_directory(output_dir))
-        ss << "A directory named \"" << output_dir.string() << "\" already exists. Please remove it or choose another directory to output the point clouds.";
+        ss << "A directory named \"" << output_dir.string() << "\" already exists. Please remove it or choose another directory to output the dataset.";
       else if (bfs::is_regular_file(output_dir))
-        ss << "A regular file named \"" << output_dir.string() << "\" already exists. Please remove this file or choose another directory name to output the point clouds.";
+        ss << "A regular file named \"" << output_dir.string() << "\" already exists. Please remove this file or choose another directory name to output the dataset.";
       else
-        ss << "\"" << output_dir.string() << "\" already exists. Please remove it or choose another directory name to output the point clouds.";
+        ss << "\"" << output_dir.string() << "\" already exists. Please remove it or choose another directory name to output the dataset.";
       throw std::runtime_error(ss.str());
     }
 

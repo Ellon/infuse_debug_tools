@@ -98,7 +98,7 @@ void ImagePairExtractor::Extract()
   // metadata_ofs_.open((output_dir_ / "metadata.txt").string());
 
   // Setup progress display
-  std::cout << "Extracting " << n_images << " image pairs to " << output_dir_.string() << "...";
+  std::cout << "Extracting " << n_images << " image pairs to " << output_dir_.string() << "/...";
   boost::progress_display show_progress( n_images );
 
   // Loop over bags

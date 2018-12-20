@@ -107,7 +107,7 @@ void PointCloudExtractor::Extract()
   }
 
   // Setup progress display
-  std::cout << "Extracting " << n_point_clouds << " point clouds" << (extract_pngs_? " and PNG views" : "") << "...";
+  std::cout << "Extracting " << n_point_clouds << " point clouds " << (extract_pngs_? "and PNG views " : "") << "to " << output_dir_.string() << "/...";
   boost::progress_display show_progress( n_point_clouds );
 
   // Loop over bags

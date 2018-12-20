@@ -126,8 +126,9 @@ void PointCloudExtractor::Extract()
         } else throw std::runtime_error("Could not instantiate an infuse_msgs::asn1_bitstream message!");
       } // for msgs in view
     } catch (...) {
-      // Assure the bags are closed if something goes wrong and re-throw
+      // Assure files are closed if something goes wrong and re-throw
       bag.close();
+      metadata_ofs_.close();
       if (extract_pngs_)  pcl_viewer_->close();
       throw;
     }

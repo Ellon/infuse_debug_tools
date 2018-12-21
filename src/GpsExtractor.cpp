@@ -38,6 +38,7 @@ GpsExtractor::GpsExtractor(const std::string &output_dir, const std::vector<std:
   asn1_pose_ptr_{std::make_unique<asn1SccTransformWithCovariance>()},
   queue_size_{1000}
 {
+  // This is needed to use message_filters::TimeSynchronizer out of a ROS node
   ros::Time::init();
 }
 

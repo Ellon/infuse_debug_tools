@@ -28,8 +28,9 @@ void ASN1BitstreamLogger::LogTransformWithCovariance(const asn1SccTransformWithC
 std::vector<std::string> ASN1BitstreamLogger::GetTransformWithCovarianceLogEntries(std::string prefix)
 {
   std::vector<std::string> entries = {"parent_time", "child_time", "x", "y", "z", "qw", "qx", "qy", "qz", "q_norm", "roll", "pitch", "yaw"};
-  for (auto & entry : entries)
-    entry = prefix + entry;
+  if (not prefix.empty())
+    for (auto & entry : entries)
+      entry = prefix + entry;
   return std::move(entries);
 }
 
@@ -51,8 +52,9 @@ std::vector<std::string> ASN1BitstreamLogger::GetPointcloudLogEntries(std::strin
     std::vector<std::string> tmp = GetTransformWithCovarianceLogEntries("pose_robot_sensor__");
     entries.insert(entries.end(), tmp.begin(), tmp.end());
   }
-  for (auto & entry : entries)
-    entry = prefix + entry;
+  if (not prefix.empty())
+    for (auto & entry : entries)
+      entry = prefix + entry;
   return std::move(entries);
 }
 

@@ -4,7 +4,7 @@ project(infuse_debug_tools)
 set (CMAKE_CXX_STANDARD 14)
 
 ## Find catkin and any catkin packages
-find_package(catkin REQUIRED COMPONENTS roscpp infuse_msgs std_msgs message_generation tf2_ros rosbag_storage)
+find_package(catkin REQUIRED COMPONENTS roscpp infuse_msgs std_msgs message_generation tf2_ros rosbag_storage infuse_novatel_gps_msgs)
 
 find_package(infuse_asn1_types REQUIRED)
 find_package(infuse_asn1_conversions REQUIRED)

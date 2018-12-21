@@ -8,6 +8,8 @@
 #include <infuse_asn1_types/TransformWithCovariance.h>
 #include <infuse_asn1_types/Pointcloud.h>
 
+#include <infuse_novatel_gps_msgs/UtmInfo.h>
+
 #include <Eigen/Geometry>
 
 namespace infuse_debug_tools {
@@ -20,6 +22,9 @@ public:
 
   static void LogPointcloud(const asn1SccPointcloud & cloud, std::ofstream & ofs);
   static std::vector<std::string> GetPointcloudLogEntries(std::string prefix = "");
+
+  static void LogGps(const asn1SccTransformWithCovariance & transform, const infuse_novatel_gps_msgs::UtmInfo & info, std::ofstream & ofs);
+  static std::vector<std::string> GetGpsLogEntries(std::string prefix = "");
 
   template<typename T>
   static T Yaw(const Eigen::Quaternion<T> & quat)

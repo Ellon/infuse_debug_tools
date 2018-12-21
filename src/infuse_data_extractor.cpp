@@ -1,6 +1,7 @@
 #include "PointCloudExtractor.hpp"
 #include "ImagePairExtractor.hpp"
 #include "PoseExtractor.hpp"
+#include "GpsExtractor.hpp"
 
 #include <boost/program_options.hpp>
 #include <boost/filesystem.hpp>
@@ -214,13 +215,14 @@ int main(int argc, char **argv)
     {
       // Create the extractor and extract gps poses.
       bfs::path gps_output_dir = output_dir / "gps";
-      infuse_debug_tools::PoseExtractor pose_extractor{
+      infuse_debug_tools::GpsExtractor gps_extractor{
           gps_output_dir.string(),
           vm["bags"].as<std::vector<std::string>>(),
-          {vm["gps-pose-topic"].as<std::string>()},
+          vm["gps-pose-topic"].as<std::string>(),
+          vm["gps-info-topic"].as<std::string>(),
           "gps"
       };
-      pose_extractor.Extract();
+      gps_extractor.Extract();
     }
 
   } catch (const bpo::error &ex) {

@@ -34,6 +34,7 @@ add_library(infuse_debug_tools
 	src/PointCloudExtractor.cpp
 	src/PoseExtractor.cpp
 	src/ImagePairExtractor.cpp
+	src/GpsExtractor.cpp
 )
 target_include_directories(infuse_debug_tools
 	PUBLIC

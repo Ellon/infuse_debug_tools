@@ -23,8 +23,11 @@ public:
   static void LogPointcloud(const asn1SccPointcloud & cloud, std::ofstream & ofs);
   static std::vector<std::string> GetPointcloudLogEntries(std::string prefix = "");
 
-  static void LogGps(const asn1SccTransformWithCovariance & transform, const infuse_novatel_gps_msgs::UtmInfo & info, std::ofstream & ofs);
-  static std::vector<std::string> GetGpsLogEntries(std::string prefix = "");
+  static void LogGpsPoseWithInfo(const asn1SccTransformWithCovariance & transform, const infuse_novatel_gps_msgs::UtmInfo & info, std::ofstream & ofs);
+  static std::vector<std::string> GetGpsPoseWithInfoLogEntries(std::string prefix = "");
+
+  static void LogGpsInfo(const infuse_novatel_gps_msgs::UtmInfo & info, std::ofstream & ofs);
+  static std::vector<std::string> GetGpsInfoLogEntries(std::string prefix = "");
 
   template<typename T>
   static T Yaw(const Eigen::Quaternion<T> & quat)

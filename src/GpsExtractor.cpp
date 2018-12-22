@@ -29,14 +29,12 @@ public:
 };
 
 
-GpsExtractor::GpsExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic,  const std::string &info_topic, const std::string &output_name)
+GpsExtractor::GpsExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &pose_topic,  const std::string &info_topic)
 : output_dir_{output_dir},
   bag_paths_{bag_paths},
   pose_topic_{pose_topic},
   info_topic_{info_topic},
-  output_name_{output_name},
-  asn1_pose_ptr_{std::make_unique<asn1SccTransformWithCovariance>()},
-  queue_size_{1000}
+  queue_size_{100000}
 {
   // This is needed to use message_filters::TimeSynchronizer out of a ROS node
   ros::Time::init();
@@ -96,33 +94,42 @@ void GpsExtractor::Extract()
   // Write dataformat file. The rationalle of keeping the dataformat separated
   // from the metadata is that this way it is possible to associate the cloud
   // number with the line in the metadata file.
-  std::ofstream dataformat_ofs((output_dir_ / "dataformat.txt").string());
-  std::vector<std::string> entries{ASN1BitstreamLogger::GetGpsLogEntries()};
-  unsigned int index = 1;
-  for (auto entry : entries) {
-    dataformat_ofs << "# " << std::setw(2) << index << " - " << entry << '\n';
-    index++;
-  }
-  dataformat_ofs.close();
+  // We have three outputs files, so we write three datafiles.
+  auto write_dataformat_file = [this](const std::string &filename, const std::vector<std::string> & entries) -> void {
+    std::ofstream dataformat_ofs((this->output_dir_ / filename).string());
+    unsigned int index = 1;
+    for (auto entry : entries) {
+      dataformat_ofs << "# " << std::setw(2) << index << " - " << entry << '\n';
+      index++;
+    }
+    dataformat_ofs.close();
+  };
+  write_dataformat_file("gps_pose_dataformat.txt", ASN1BitstreamLogger::GetTransformWithCovarianceLogEntries());
+  write_dataformat_file("gps_info_dataformat.txt", ASN1BitstreamLogger::GetGpsInfoLogEntries());
+  write_dataformat_file("gps_pose_info_dataformat.txt", ASN1BitstreamLogger::GetGpsPoseWithInfoLogEntries());
 
-  // Set up fake subscribers to capture GPS data
+  // Set up fake subscribers to capture synchronized GPS data
   BagSubscriber<infuse_msgs::asn1_bitstream> pose_sub;
   BagSubscriber<infuse_novatel_gps_msgs::UtmInfo> info_sub;
 
   // Use time synchronizer to make sure we get properly synchronized data
   message_filters::TimeSynchronizer<infuse_msgs::asn1_bitstream, infuse_novatel_gps_msgs::UtmInfo> sync(pose_sub, info_sub, queue_size_);
-  sync.registerCallback(boost::bind(&GpsExtractor::ProcessGpsData, this, _1, _2));
+  sync.registerCallback(boost::bind(&GpsExtractor::ProcessPoseWithInfo, this, _1, _2));
 
-  // Setup output data file
-  bfs::path output_filename = (output_dir_ / output_name_).replace_extension(".txt");
-  data_ofs_.open(output_filename.string());
+  // Setup output data files
+  pose_ofs_.open((output_dir_ / "gps_pose.txt").string());
+  info_ofs_.open((output_dir_ / "gps_info.txt").string());
+  syncd_ofs_.open((output_dir_ / "gps_pose_info.txt").string());
 
   // Setup progress display
-  std::cout << "Extracting " << n_poses << " GPS entries to " << output_filename.string();
-  show_progress_ptr_ = std::make_unique<boost::progress_display>(n_poses);
+  std::cout << "Extracting " << n_poses << " GPS entries to " << output_dir_.string();
+  boost::progress_display show_progress(n_poses);
 
   // Vector used to create a view on the bag with both topics
   std::vector<std::string> topics = {pose_topic_, info_topic_};
+
+  // Reset count before main loop
+  syncd_count_ = 0;
 
   // Loop over bags
   for (auto bag_path : bag_paths_) {
@@ -130,60 +137,101 @@ void GpsExtractor::Extract()
     // Create a view of the bag with the selected topics only
     rosbag::View view(bag, rosbag::TopicQuery(topics));
 
-  try {
-    // Loop over messages in each view
-    for (rosbag::MessageInstance const m: view) {
-      if (m.getTopic() == pose_topic_) {
-        infuse_msgs::asn1_bitstream::Ptr pose_msg = m.instantiate<infuse_msgs::asn1_bitstream>();
-        if (pose_msg != nullptr) {
-          pose_sub.newMessage(pose_msg);
-        } else
-          throw std::runtime_error("Could not instantiate an infuse_msgs::asn1_bitstream message!");
-      }
+    try {
+      // Loop over messages in each view
+      for (rosbag::MessageInstance const m: view) {
+        if (m.getTopic() == pose_topic_) {
+          infuse_msgs::asn1_bitstream::Ptr pose_msg = m.instantiate<infuse_msgs::asn1_bitstream>();
+          if (pose_msg != nullptr) {
+            ProcessPose(pose_msg);
+            pose_sub.newMessage(pose_msg);
+            // Update progress display
+            ++show_progress;
+          } else
+            throw std::runtime_error("Could not instantiate an infuse_msgs::asn1_bitstream message!");
+        }
 
-      if (m.getTopic() == info_topic_) {
-        infuse_novatel_gps_msgs::UtmInfo::Ptr info_msg = m.instantiate<infuse_novatel_gps_msgs::UtmInfo>();
-        if (info_msg != nullptr) {
-          info_sub.newMessage(info_msg);
-        } else
-          throw std::runtime_error("Could not instantiate an infuse_novatel_gps_msgs::UtmInfo message!");
-      }
-    } // for msgs in view
-  } catch (...) {
-    // Assure files are closed if something goes wrong and re-trhow
+        if (m.getTopic() == info_topic_) {
+          infuse_novatel_gps_msgs::UtmInfo::Ptr info_msg = m.instantiate<infuse_novatel_gps_msgs::UtmInfo>();
+          if (info_msg != nullptr) {
+            ProcessInfo(info_msg);
+            info_sub.newMessage(info_msg);
+          } else
+            throw std::runtime_error("Could not instantiate an infuse_novatel_gps_msgs::UtmInfo message!");
+        }
+      } // for msgs in view
+    } catch (...) {
+      // Assure files are closed if something goes wrong and re-trhow
+      bag.close();
+      pose_ofs_.close();
+      info_ofs_.close();
+      syncd_ofs_.close();
+      throw;
+    }
+
     bag.close();
-    data_ofs_.close();
-    throw;
-  }
-
-  bag.close();
   } // for bags
 
-  data_ofs_.close();
+  if(syncd_count_ != n_poses)
+    std::cout << "WARNING: Number of synchronized data differs from number of poses (" << syncd_count_ << " processed data vs. " << n_poses << " poses)" << std::endl;
+
+  pose_ofs_.close();
+  info_ofs_.close();
+  syncd_ofs_.close();
 }
 
-void GpsExtractor::ProcessGpsData(const infuse_msgs::asn1_bitstream::ConstPtr &pose_msg, const infuse_novatel_gps_msgs::UtmInfo::ConstPtr &info_msg)
+void GpsExtractor::ProcessPose(const infuse_msgs::asn1_bitstream::ConstPtr &pose_msg)
 {
   // Initialize asn1 pose to be sure we have a clean object.
-  asn1SccTransformWithCovariance_Initialize(asn1_pose_ptr_.get());
+  asn1SccTransformWithCovariance asn1_pose;
+  asn1SccTransformWithCovariance_Initialize(&asn1_pose);
 
   // Decode
   flag res;
   int errorCode;
   BitStream bstream;
   BitStream_AttachBuffer(&bstream, const_cast<unsigned char*>(pose_msg->data.data()), pose_msg->data.size());
-  res = asn1SccTransformWithCovariance_Decode(asn1_pose_ptr_.get(), &bstream, &errorCode);
+  res = asn1SccTransformWithCovariance_Decode(&asn1_pose, &bstream, &errorCode);
   if (not res) {
     std::stringstream ss;
     ss << "Error decode asn1TransformWithCovariance! Error: " << errorCode << "\n";
     throw std::runtime_error(ss.str());
   }
 
-  ASN1BitstreamLogger::LogGps(*asn1_pose_ptr_, *info_msg, data_ofs_);
-  data_ofs_ << '\n';
+  ASN1BitstreamLogger::LogTransformWithCovariance(asn1_pose, pose_ofs_);
+  pose_ofs_ << '\n';
 
-  // Update progress display
-  ++(*show_progress_ptr_);
+}
+
+void GpsExtractor::ProcessInfo(const infuse_novatel_gps_msgs::UtmInfo::ConstPtr &info_msg)
+{
+  ASN1BitstreamLogger::LogGpsInfo(*info_msg, info_ofs_);
+  info_ofs_ << '\n';
+}
+
+void GpsExtractor::ProcessPoseWithInfo(const infuse_msgs::asn1_bitstream::ConstPtr &pose_msg, const infuse_novatel_gps_msgs::UtmInfo::ConstPtr &info_msg)
+{
+  // Initialize asn1 pose to be sure we have a clean object.
+  asn1SccTransformWithCovariance asn1_pose;
+  asn1SccTransformWithCovariance_Initialize(&asn1_pose);
+
+  // Decode
+  flag res;
+  int errorCode;
+  BitStream bstream;
+  BitStream_AttachBuffer(&bstream, const_cast<unsigned char*>(pose_msg->data.data()), pose_msg->data.size());
+  res = asn1SccTransformWithCovariance_Decode(&asn1_pose, &bstream, &errorCode);
+  if (not res) {
+    std::stringstream ss;
+    ss << "Error decode asn1TransformWithCovariance! Error: " << errorCode << "\n";
+    throw std::runtime_error(ss.str());
+  }
+
+  ASN1BitstreamLogger::LogTransformWithCovariance(asn1_pose, syncd_ofs_);
+  ASN1BitstreamLogger::LogGpsInfo(*info_msg, syncd_ofs_);
+  syncd_ofs_ << '\n';
+
+  syncd_count_++;
 }
 
 }

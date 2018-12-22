@@ -219,8 +219,7 @@ int main(int argc, char **argv)
           gps_output_dir.string(),
           vm["bags"].as<std::vector<std::string>>(),
           vm["gps-pose-topic"].as<std::string>(),
-          vm["gps-info-topic"].as<std::string>(),
-          "gps"
+          vm["gps-info-topic"].as<std::string>()
       };
       gps_extractor.Extract();
     }

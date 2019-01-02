@@ -85,7 +85,11 @@ std::vector<std::string> ASN1BitstreamLogger::GetGpsPoseWithInfoLogEntries(std::
 
 void ASN1BitstreamLogger::LogGpsInfo(const infuse_novatel_gps_msgs::UtmInfo & info, std::ofstream & ofs)
 {
-  ofs << info.solution_status << " "
+  // Convert ROS timestamp to usecs
+  time_t time_usecs = info.header.stamp.sec * 1000000ull + info.header.stamp.nsec / 1000ull;
+
+  ofs << time_usecs           << " "
+      << info.solution_status << " "
       << info.position_type   << " "
       << info.easting_sigma   << " "
       << info.northing_sigma  << " "
@@ -95,6 +99,7 @@ void ASN1BitstreamLogger::LogGpsInfo(const infuse_novatel_gps_msgs::UtmInfo & in
 std::vector<std::string> ASN1BitstreamLogger::GetGpsInfoLogEntries(std::string prefix)
 {
   std::vector<std::string> entries = {
+    "gps_info_timestamp",
     "solution_status",
     "position_type",
     "easting_sigma",

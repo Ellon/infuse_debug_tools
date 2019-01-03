@@ -75,27 +75,34 @@ void ImagePairExtractor::Extract()
   // Create output dir
   lambda_create_subdir(output_dir_);
   // Create subdirs
-  left_dir_       = lambda_create_subdir(output_dir_, "left");
-  left_data_dir_  = lambda_create_subdir(left_dir_,   "data");
-  right_dir_      = lambda_create_subdir(output_dir_, "right");
-  right_data_dir_ = lambda_create_subdir(right_dir_,  "data");
+  left_dir_            = lambda_create_subdir(output_dir_, "left");
+  left_data_dir_       = lambda_create_subdir(left_dir_,   "data");
+  left_metadata_dir_   = lambda_create_subdir(left_dir_,   "metadata");
+  right_dir_           = lambda_create_subdir(output_dir_, "right");
+  right_data_dir_      = lambda_create_subdir(right_dir_,  "data");
+  right_metadata_dir_  = lambda_create_subdir(right_dir_,  "metadata");
 
-  // // Write dataformat file. The rationalle of keeping the dataformat separated
-  // // from the metadata is that this way it is possible to associate the cloud
-  // // number with the line in the metadata file.
-  // std::ofstream dataformat_ofs((output_dir_ / "dataformat.txt").string());
-  // {
-  //   std::vector<std::string> entries{ASN1BitstreamLogger::GetPointcloudLogEntries()};
-  //   unsigned int index = 1;
-  //   for (auto entry : entries) {
-  //     dataformat_ofs << "# " << std::setw(2) << index << " - " << entry << '\n';
-  //     index++;
-  //   }
-  // }
-  // dataformat_ofs.close();
+  // Write dataformat files. The rationalle of keeping the dataformat
+  // separated from the metadata is that this way it is possible to associate
+  // the cloud number with the line in the metadata file.
+  // We do it using a lambda function.
+  auto lambda_create_dataformat_file = [](bfs::path dir, std::string file_prefix, const std::vector<std::string> & entries) -> void {
+    std::ofstream dataformat_ofs((dir / (file_prefix + "dataformat.txt")).string());
+    unsigned int index = 1;
+    for (auto entry : entries) {
+      dataformat_ofs << "# " << std::setw(2) << index << " - " << entry << '\n';
+      index++;
+    }
+    dataformat_ofs.close();
+  };
+  lambda_create_dataformat_file(left_dir_, "left_", ASN1BitstreamLogger::GetFrameLogEntries());
+  lambda_create_dataformat_file(right_dir_, "right_", ASN1BitstreamLogger::GetFrameLogEntries());
+  lambda_create_dataformat_file(output_dir_, "pair_", ASN1BitstreamLogger::GetFramePairLogEntries());
 
-  // // Setup metadata file
-  // metadata_ofs_.open((output_dir_ / "metadata.txt").string());
+  // Setup metadata file
+  left_metadata_ofs_.open((left_dir_ / "left_all_metadata.txt").string());
+  right_metadata_ofs_.open((right_dir_ / "right_all_metadata.txt").string());
+  pair_metadata_ofs_.open((output_dir_ / "pair_all_metadata.txt").string());
 
   // Setup progress display
   std::cout << "Extracting " << n_images << " image pairs to " << output_dir_.string() << "/...";
@@ -152,6 +159,29 @@ void ImagePairExtractor::ProcessImagePair(const infuse_msgs::asn1_bitstream::Ptr
 
   ProcessImage(asn1_frame_pair_ptr_->left, left_data_dir_);
   ProcessImage(asn1_frame_pair_ptr_->right, right_data_dir_);
+
+  ASN1BitstreamLogger::LogFrame(asn1_frame_pair_ptr_->left, left_metadata_ofs_);
+  left_metadata_ofs_ << '\n';
+  ASN1BitstreamLogger::LogFrame(asn1_frame_pair_ptr_->right, right_metadata_ofs_);
+  right_metadata_ofs_ << '\n';
+
+  ASN1BitstreamLogger::LogFramePair(*asn1_frame_pair_ptr_, pair_metadata_ofs_);
+  pair_metadata_ofs_ << '\n';
+
+  // Lambda function to dump metadata of a ans1 frame in a separated file
+  auto lambda_log_metadata_on_file = [this](bfs::path metadata_dir, const asn1SccFrame & asn1_frame) -> void {
+    // Compose output filename
+    std::string filename = std::to_string(this->image_count_);
+    filename = std::string(this->length_img_filename_ - filename.length(), '0') + filename + ".txt";
+    bfs::path metadata_path = metadata_dir / filename;
+    // Write the metadata file
+    std::ofstream img_metadata_ofs(metadata_path.string());
+    ASN1BitstreamLogger::LogFrame(asn1_frame, img_metadata_ofs);
+    img_metadata_ofs.close();
+  };
+  // Dump metadata of frame in a separated files
+  lambda_log_metadata_on_file(left_metadata_dir_, asn1_frame_pair_ptr_->left);
+  lambda_log_metadata_on_file(right_metadata_dir_, asn1_frame_pair_ptr_->right);
 
   image_count_++;
 }

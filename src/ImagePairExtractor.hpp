@@ -32,8 +32,10 @@ private:
   //! Directories where to put the image files (set on Extract())
   boost::filesystem::path left_dir_;
   boost::filesystem::path left_data_dir_;
+  boost::filesystem::path left_metadata_dir_;
   boost::filesystem::path right_dir_;
   boost::filesystem::path right_data_dir_;
+  boost::filesystem::path right_metadata_dir_;
   //! Variable used to decode the ASN1 message into.
   std::unique_ptr<asn1SccFramePair> asn1_frame_pair_ptr_;
   //! Number of characters to be used when creating pcd filename
@@ -44,8 +46,12 @@ private:
   size_t image_max_;
   //! Extension used to save the image files
   std::string img_extension_;
-  //! Stream used to write the metadata file
-  // std::ofstream metadata_ofs_;
+  //! Stream used to write the left cam metadata file
+  std::ofstream left_metadata_ofs_;
+  //! Stream used to write the right cam metadata file
+  std::ofstream right_metadata_ofs_;
+  //! Stream used to write the frame pair metadata file 
+  std::ofstream pair_metadata_ofs_;
 };
 
 } // infuse_debug_tools

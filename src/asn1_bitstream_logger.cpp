@@ -114,5 +114,66 @@ std::vector<std::string> ASN1BitstreamLogger::GetGpsInfoLogEntries(std::string p
   return std::move(entries);
 }
 
+void ASN1BitstreamLogger::LogFrame(const asn1SccFrame & frame, std::ofstream & ofs)
+{
+  ofs << frame.metadata.timeStamp.microseconds << " "
+      << frame.metadata.receivedTime.microseconds << " ";
+
+  LogTransformWithCovariance(frame.extrinsic.pose_fixedFrame_robotFrame, ofs);
+  LogTransformWithCovariance(frame.extrinsic.pose_robotFrame_sensorFrame, ofs);
+}
+
+std::vector<std::string> ASN1BitstreamLogger::GetFrameLogEntries(std::string prefix)
+{
+  std::vector<std::string> entries = {
+    "timestamp",
+    "received_time"
+  };
+
+  {
+    std::vector<std::string> tmp = GetTransformWithCovarianceLogEntries("pose_fixed_robot__");
+    entries.insert(entries.end(), tmp.begin(), tmp.end());
+  }
+
+  {
+    std::vector<std::string> tmp = GetTransformWithCovarianceLogEntries("pose_robot_sensor__");
+    entries.insert(entries.end(), tmp.begin(), tmp.end());
+  }
+
+  if (not prefix.empty())
+    for (auto & entry : entries)
+      entry = prefix + entry;
+
+  return std::move(entries);
+}
+
+void ASN1BitstreamLogger::LogFramePair(const asn1SccFramePair & frame_pair, std::ofstream & ofs)
+{
+  ofs << frame_pair.baseline << " ";
+  LogFrame(frame_pair.left, ofs);
+  LogFrame(frame_pair.right, ofs);
+}
+
+std::vector<std::string> ASN1BitstreamLogger::GetFramePairLogEntries(std::string prefix)
+{
+  std::vector<std::string> entries = {"baseline"};
+  {
+    std::vector<std::string> tmp = GetFrameLogEntries("left__");
+    entries.insert(entries.end(), tmp.begin(), tmp.end());
+  }
+  {
+    std::vector<std::string> tmp = GetFrameLogEntries("right__");
+    entries.insert(entries.end(), tmp.begin(), tmp.end());
+  }
+
+  if (not prefix.empty())
+    for (auto & entry : entries)
+      entry = prefix + entry;
+
+  return std::move(entries);
+} 
+
+
+
 
 } // infuse_debug_tools

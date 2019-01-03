@@ -7,6 +7,7 @@
 
 #include <infuse_asn1_types/TransformWithCovariance.h>
 #include <infuse_asn1_types/Pointcloud.h>
+#include <infuse_asn1_types/Frame.h>
 
 #include <infuse_novatel_gps_msgs/UtmInfo.h>
 
@@ -28,6 +29,12 @@ public:
 
   static void LogGpsInfo(const infuse_novatel_gps_msgs::UtmInfo & info, std::ofstream & ofs);
   static std::vector<std::string> GetGpsInfoLogEntries(std::string prefix = "");
+
+  static void LogFrame(const asn1SccFrame & frame, std::ofstream & ofs);
+  static std::vector<std::string> GetFrameLogEntries(std::string prefix = "");
+
+  static void LogFramePair(const asn1SccFramePair & frame_pair, std::ofstream & ofs);
+  static std::vector<std::string> GetFramePairLogEntries(std::string prefix = "");
 
   template<typename T>
   static T Yaw(const Eigen::Quaternion<T> & quat)

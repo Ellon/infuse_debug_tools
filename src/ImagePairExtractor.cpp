@@ -157,14 +157,15 @@ void ImagePairExtractor::ProcessImagePair(const infuse_msgs::asn1_bitstream::Ptr
     throw std::runtime_error(ss.str());
   }
 
+  // Write images
   ProcessImage(asn1_frame_pair_ptr_->left, left_data_dir_);
   ProcessImage(asn1_frame_pair_ptr_->right, right_data_dir_);
 
+  // Write all_metadata files
   ASN1BitstreamLogger::LogFrame(asn1_frame_pair_ptr_->left, left_metadata_ofs_);
   left_metadata_ofs_ << '\n';
   ASN1BitstreamLogger::LogFrame(asn1_frame_pair_ptr_->right, right_metadata_ofs_);
   right_metadata_ofs_ << '\n';
-
   ASN1BitstreamLogger::LogFramePair(*asn1_frame_pair_ptr_, pair_metadata_ofs_);
   pair_metadata_ofs_ << '\n';
 
@@ -179,7 +180,7 @@ void ImagePairExtractor::ProcessImagePair(const infuse_msgs::asn1_bitstream::Ptr
     ASN1BitstreamLogger::LogFrame(asn1_frame, img_metadata_ofs);
     img_metadata_ofs.close();
   };
-  // Dump metadata of frame in a separated files
+  // Dump metadata of frames in a separated files
   lambda_log_metadata_on_file(left_metadata_dir_, asn1_frame_pair_ptr_->left);
   lambda_log_metadata_on_file(right_metadata_dir_, asn1_frame_pair_ptr_->right);
 

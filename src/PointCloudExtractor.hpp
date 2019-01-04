@@ -5,6 +5,7 @@
 #include <vector>
 #include <memory>
 #include <fstream>
+#include <tuple>
 
 #include <infuse_msgs/asn1_bitstream.h>
 #include <infuse_asn1_types/Pointcloud.h>
@@ -26,12 +27,13 @@ public:
   typedef ColorHandler::ConstPtr ColorHandlerConstPtr;
 
 public:
-  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false);
+  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false, bool debug_mode = false);
   void Extract();
 
 private:
   void ProcessPointCloud(const infuse_msgs::asn1_bitstream::Ptr& msg);
   Eigen::Affine3d ConvertAsn1PoseToEigen(const asn1SccTransformWithCovariance& asn1_pose);
+  std::tuple<float,float,float,float,float,float> FindPointcloudMinMax(const PointCloud & cloud);
 
 private:
   //! Directory where to put the dataset
@@ -64,6 +66,13 @@ private:
   double point_size_;
   //! Directory where to put the png files (set on Extract())
   boost::filesystem::path png_dir_;
+  //! Store if we want to run in debug mode
+  bool debug_mode_;
+  //! Directory where to put the debug files (set on Extract())
+  boost::filesystem::path debug_dir_;
+  //! Stream used to write min max debug data
+  std::ofstream debug_min_max_ofs_;
+
 };
 
 } // infuse_debug_tools

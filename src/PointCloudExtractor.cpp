@@ -16,7 +16,7 @@ namespace bfs = boost::filesystem;
 
 namespace infuse_debug_tools {
 
-PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs)
+PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs, bool debug_mode)
   : output_dir_{output_dir},
     bag_paths_{bag_paths},
     point_cloud_topic_{point_cloud_topic},
@@ -27,7 +27,8 @@ PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const st
     extract_pngs_{extract_pngs},
     pcl_viewer_{nullptr},
     color_handler_{nullptr},
-    point_size_{1}
+    point_size_{1},
+    debug_mode_{debug_mode}
 {}
 
 
@@ -81,6 +82,8 @@ void PointCloudExtractor::Extract()
   metadata_dir_ = lambda_create_subdir(output_dir_, "metadata");
   if (extract_pngs_)
     png_dir_      = lambda_create_subdir(output_dir_, "pngs");
+  if (debug_mode_)
+    debug_dir_      = lambda_create_subdir(output_dir_, "debug");
 
   // Write dataformat file. The rationalle of keeping the dataformat separated
   // from the metadata is that this way it is possible to associate the cloud
@@ -106,6 +109,12 @@ void PointCloudExtractor::Extract()
     pcl_viewer_->initCameraParameters ();
   }
 
+  // Setup debug streams if needed
+  if (debug_mode_) {
+    debug_min_max_ofs_.open((debug_dir_ / "min_max.txt").string());
+    debug_min_max_ofs_ << "# min_x max_x min_y max_y min_z max_z\n";
+  }
+
   // Setup progress display
   std::cout << "Extracting " << n_point_clouds << " point clouds " << (extract_pngs_? "and PNG views " : "") << "to " << output_dir_.string() << "/...";
   boost::progress_display show_progress( n_point_clouds );
@@ -129,7 +138,12 @@ void PointCloudExtractor::Extract()
       // Assure files are closed if something goes wrong and re-throw
       bag.close();
       metadata_ofs_.close();
-      if (extract_pngs_)  pcl_viewer_->close();
+      if (extract_pngs_) {
+        pcl_viewer_->close();
+      }
+      if (debug_mode_) {
+        debug_min_max_ofs_.close();
+      }
       throw;
     }
 
@@ -140,6 +154,10 @@ void PointCloudExtractor::Extract()
 
   if (extract_pngs_) {
     pcl_viewer_->close();
+  }
+
+  if (debug_mode_) {
+    debug_min_max_ofs_.close();
   }
 
 }
@@ -249,8 +267,12 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
     pcl_viewer_->saveScreenshot(png_path.string());
   }
 
-  // Increment pcd counter
-  pcd_count_++;
+  if (debug_mode_) {
+    // Find min max xyz
+    float min_x = 0, max_x = 0, min_y = 0, max_y = 0, min_z = 0, max_z = 0;
+    std::tie(min_x, max_x, min_y, max_y, min_z, max_z) = FindPointcloudMinMax(*pcl_cloud_ptr);
+    debug_min_max_ofs_ << min_x << " " << max_x << " " << min_y << " " << max_y << " " << min_z << " " << max_z << "\n";
+  }
 
   // Log metadata in the common file
   ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, metadata_ofs_);
@@ -262,6 +284,8 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
   ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, pcd_metadata_ofs);
   pcd_metadata_ofs.close();
 
+  // Increment pcd counter
+  pcd_count_++;
 }
 
 Eigen::Affine3d PointCloudExtractor::ConvertAsn1PoseToEigen(const asn1SccTransformWithCovariance& asn1_pose)
@@ -275,5 +299,44 @@ Eigen::Affine3d PointCloudExtractor::ConvertAsn1PoseToEigen(const asn1SccTransfo
   eigen_pose.translation() << asn1_pose.data.translation.arr[0], asn1_pose.data.translation.arr[1], asn1_pose.data.translation.arr[2];
   return eigen_pose;
 }
+
+std::tuple<float,float,float,float,float,float> PointCloudExtractor::FindPointcloudMinMax(const PointCloud & cloud)
+{
+  if (cloud.points.empty()) {
+    std::cerr << "Warning: Found empty cloud (number " << pcd_count_ << ") when computing min max coordinates\n";
+    return std::tuple<float,float,float,float,float,float>(0,0,0,0,0,0);
+  }
+
+  float min_x = cloud.points[0].x,
+        max_x = cloud.points[0].x,
+        min_y = cloud.points[0].y,
+        max_y = cloud.points[0].y,
+        min_z = cloud.points[0].z,
+        max_z = cloud.points[0].z;
+
+  for (auto & point : cloud.points)
+  {
+    if (min_x > point.x)
+      min_x = point.x;
+
+    if (max_x < point.x)
+      max_x = point.x;
+
+    if (min_y > point.y)
+      min_y = point.y;
+
+    if (max_y < point.y)
+      max_y = point.y;
+
+    if (min_z > point.z)
+      min_z = point.z;
+
+    if (max_z < point.z)
+      max_z = point.z;
+  }
+
+  return std::make_tuple(min_x, max_x, min_y, max_y, min_z, max_z);
+}
+
 
 } // infuse_debug_tools

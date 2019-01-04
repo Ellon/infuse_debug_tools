@@ -47,7 +47,9 @@ int main(int argc, char **argv)
     bpo::options_description velodyne{"Velodyne specific options"};
     velodyne.add_options()
       ("velodyne-topic", bpo::value<std::string>()->default_value("/velodyne/point_cloud"), "Velodyne point cloud topic")
-      ("velodyne-png", bpo::bool_switch(), "Extract point cloud views as pngs (Warning: this launches a PCLViewer window during extraction)")
+      ("velodyne-png", bpo::bool_switch(), "Extract point cloud views as images (Warning: this launches a PCLViewer window during extraction)")
+      ("velodyne-png-min-z", bpo::value<double>(), "Minimum Z value (used to create color lookup table)")
+      ("velodyne-png-max-z", bpo::value<double>(), "Maximum Z value (used to create color lookup table)")
       ;
 
     bpo::options_description cam{"Camera specific options"};
@@ -136,6 +138,14 @@ int main(int argc, char **argv)
       return 1;
     }
 
+    // If velodyne min max Z values are informed, then both should be informed
+    if ((vm.count("velodyne-png-min-z") and not vm.count("velodyne-png-max-z")) or 
+        (not vm.count("velodyne-png-min-z") and vm.count("velodyne-png-max-z"))) {
+      std::cout << "Error: Only one limit was informed for velodyne lookup table. If you want to set up the lookup table you should inform both limits." << '\n';
+      print_usage(argc, argv, visible);
+      return 1;
+    }
+
     // Makes sure the output dir does not already exists
     bfs::path output_dir = vm["output-dir"].as<std::string>();
     if (bfs::exists(output_dir)) {
@@ -159,19 +169,34 @@ int main(int argc, char **argv)
       }
     }
 
+    // Process velodyne data
     if (vm["all"].as<bool>() or vm["velodyne"].as<bool>()) {
       // Create the extractor and extract clouds.
       bfs::path velodyne_output_dir = output_dir / "velodyne";
-      infuse_debug_tools::PointCloudExtractor cloud_extractor{
-        velodyne_output_dir.string(),
-        vm["bags"].as<std::vector<std::string>>(),
-        vm["velodyne-topic"].as<std::string>(),
-        vm["velodyne-png"].as<bool>(),
-        vm["debug"].as<bool>(),
-      };
-      cloud_extractor.Extract();
+      std::unique_ptr<infuse_debug_tools::PointCloudExtractor> cloud_extractor_ptr;
+      if (vm.count("velodyne-png-min-z") or vm.count("velodyne-png-max-z")) {
+        cloud_extractor_ptr = std::make_unique<infuse_debug_tools::PointCloudExtractor>(
+          velodyne_output_dir.string(),
+          vm["bags"].as<std::vector<std::string>>(),
+          vm["velodyne-topic"].as<std::string>(),
+          vm["velodyne-png-min-z"].as<double>(),
+          vm["velodyne-png-max-z"].as<double>(),
+          vm["velodyne-png"].as<bool>(),
+          vm["debug"].as<bool>()
+          );
+      } else {
+        cloud_extractor_ptr = std::make_unique<infuse_debug_tools::PointCloudExtractor>(
+          velodyne_output_dir.string(),
+          vm["bags"].as<std::vector<std::string>>(),
+          vm["velodyne-topic"].as<std::string>(),
+          vm["velodyne-png"].as<bool>(),
+          vm["debug"].as<bool>()
+          );
+      }
+      cloud_extractor_ptr->Extract();
     }
 
+    // Process camera data
     std::array<std::string, 3> cam_names = {"front", "nav", "rear"};
     for (const auto & cam_name : cam_names) {
       if (vm["all"].as<bool>() or vm[cam_name].as<bool>()) {
@@ -187,6 +212,7 @@ int main(int argc, char **argv)
       }
     }
 
+    // Process odometry data
     if (vm["all"].as<bool>() or vm["odom"].as<bool>())
     {
       // Create the extractor and extract odometry poses.
@@ -200,6 +226,7 @@ int main(int argc, char **argv)
       pose_extractor.Extract();
     }
 
+    // Process tokamak data
     if (vm["all"].as<bool>() or vm["tokamak"].as<bool>())
     {
       // Create the extractor and extract tokamak poses.
@@ -213,6 +240,7 @@ int main(int argc, char **argv)
       pose_extractor.Extract();
     }
 
+    // Process GPS data
     if (vm["all"].as<bool>() or vm["gps"].as<bool>())
     {
       // Create the extractor and extract gps poses.

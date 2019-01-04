@@ -22,18 +22,33 @@ class PointCloudExtractor {
 public:
   typedef pcl::PointXYZI Point;
   typedef pcl::PointCloud<Point> PointCloud;
+  typedef pcl::PointXYZRGB ColoredPoint;
+  typedef pcl::PointCloud<ColoredPoint> ColoredPointCloud;
   typedef pcl::visualization::PointCloudColorHandler<Point> ColorHandler;
   typedef ColorHandler::Ptr ColorHandlerPtr;
   typedef ColorHandler::ConstPtr ColorHandlerConstPtr;
 
 public:
   PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false, bool debug_mode = false);
+  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs = false, bool debug_mode = false);
   void Extract();
 
 private:
+  void DecodeBitstream(const infuse_msgs::asn1_bitstream::Ptr& msg);
   void ProcessPointCloud(const infuse_msgs::asn1_bitstream::Ptr& msg);
   Eigen::Affine3d ConvertAsn1PoseToEigen(const asn1SccTransformWithCovariance& asn1_pose);
-  std::tuple<float,float,float,float,float,float> FindPointcloudMinMax(const PointCloud & cloud);
+  std::tuple<float,float,float,float,float,float> FindMinMax(const PointCloud & cloud);
+  std::tuple<float,float,float,float,float,float> FindMinMax(const infuse_msgs::asn1_bitstream::Ptr& msg);
+  void ColorPointCloud(ColoredPointCloud & colored_cloud);
+  Eigen::Affine3f ComputeSensorPoseInFixedFrame(const asn1SccPointcloud & asn1_cloud);
+
+  template<typename PointT>
+  void SetCloudSensorPose(const Eigen::Affine3f & pose, pcl::PointCloud<PointT> &pcl_cloud)
+  {
+    pcl_cloud.sensor_origin_ << pose.translation(), 0.0;
+    pcl_cloud.sensor_orientation_ = Eigen::Quaternionf(pose.rotation());
+  }
+
 
 private:
   //! Directory where to put the dataset
@@ -60,8 +75,6 @@ private:
   bool extract_pngs_;
   //! Viewer used to render pngs to be dumped
   boost::shared_ptr<pcl::visualization::PCLVisualizer> pcl_viewer_;
-  //! Variable used to color pointclouds during png extraction
-  ColorHandlerPtr color_handler_;
   //! Point size for PNG extraction
   double point_size_;
   //! Directory where to put the png files (set on Extract())
@@ -72,6 +85,10 @@ private:
   boost::filesystem::path debug_dir_;
   //! Stream used to write min max debug data
   std::ofstream debug_min_max_ofs_;
+  //! Store if we want to compute min max z
+  bool compute_min_max_z_;
+  //! Store min and max z used to create color lookup table
+  double min_z_, max_z_;
 
 };
 

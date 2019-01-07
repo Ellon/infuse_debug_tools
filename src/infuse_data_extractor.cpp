@@ -9,6 +9,8 @@
 namespace bpo = boost::program_options;
 namespace bfs = boost::filesystem;
 
+using ColorMode = infuse_debug_tools::PointCloudExtractor::ColorMode;
+
 void print_usage(int argc, char **argv, const bpo::options_description &desc)
 {
   std::cout << "Usage:" << '\n';
@@ -44,12 +46,25 @@ int main(int argc, char **argv)
       ("gps,g", bpo::bool_switch(), "Extract GPS pose data")
       ;
 
+    // Gather color name strings
+    std::string color_mode_info;
+    {
+      std::vector<ColorMode> v{ColorMode::kBlueToRed, ColorMode::kGreenToMagenta, ColorMode::kWhiteToRed, ColorMode::kGrayOrRed, ColorMode::kRainbow};
+      std::stringstream ss;
+      ss << "Color mode to use when creating PNGs (";
+      std::copy(v.begin(), v.end() - 1, std::ostream_iterator<ColorMode>(ss, ", "));
+      ss << v.back();
+      ss << ")";
+      color_mode_info = ss.str();
+    }
+
     bpo::options_description velodyne{"Velodyne specific options"};
     velodyne.add_options()
       ("velodyne-topic", bpo::value<std::string>()->default_value("/velodyne/point_cloud"), "Velodyne point cloud topic")
       ("velodyne-png", bpo::bool_switch(), "Extract point cloud views as images (Warning: this launches a PCLViewer window during extraction)")
       ("velodyne-png-min-z", bpo::value<double>(), "Minimum Z value (used to create color lookup table)")
       ("velodyne-png-max-z", bpo::value<double>(), "Maximum Z value (used to create color lookup table)")
+      ("velodyne-color-mode", bpo::value<ColorMode>()->default_value(ColorMode::kRainbow), color_mode_info.c_str())
       ;
 
     bpo::options_description cam{"Camera specific options"};
@@ -180,14 +195,16 @@ int main(int argc, char **argv)
           vm["velodyne-topic"].as<std::string>(),
           vm["velodyne-png-min-z"].as<double>(),
           vm["velodyne-png-max-z"].as<double>(),
-          vm["velodyne-png"].as<bool>()
+          vm["velodyne-png"].as<bool>(),
+          vm["velodyne-color-mode"].as<ColorMode>()
           );
       } else {
         cloud_extractor_ptr = std::make_unique<infuse_debug_tools::PointCloudExtractor>(
           velodyne_output_dir.string(),
           vm["bags"].as<std::vector<std::string>>(),
           vm["velodyne-topic"].as<std::string>(),
-          vm["velodyne-png"].as<bool>()
+          vm["velodyne-png"].as<bool>(),
+          vm["velodyne-color-mode"].as<ColorMode>()
           );
       }
       cloud_extractor_ptr->Extract();

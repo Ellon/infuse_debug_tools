@@ -17,7 +17,7 @@ namespace bfs = boost::filesystem;
 
 namespace infuse_debug_tools {
 
-PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs)
+PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs, ColorMode color_mode)
   : output_dir_{output_dir},
     bag_paths_{bag_paths},
     point_cloud_topic_{point_cloud_topic},
@@ -30,10 +30,11 @@ PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const st
     point_size_{1},
     compute_min_max_z_{true},
     min_z_{0},
-    max_z_{0}
+    max_z_{0},
+    color_mode_{color_mode}
 {}
 
-PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs)
+PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs, ColorMode color_mode)
   : output_dir_{output_dir},
     bag_paths_{bag_paths},
     point_cloud_topic_{point_cloud_topic},
@@ -46,7 +47,8 @@ PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const st
     point_size_{1},
     compute_min_max_z_{false},
     min_z_{min_z},
-    max_z_{max_z}
+    max_z_{max_z},
+    color_mode_{color_mode}
 {}
 
 
@@ -434,17 +436,89 @@ void PointCloudExtractor::ColorPointCloud(ColoredPointCloud & colored_cloud)
       value = 0;
 
     // Color the point
-    // Blue (= min) -> Red (= max)
-    // point.r = value;
-    // point.g = 0;
-    // point.b = 255 - value;
-    // Blue -> Green -> Red (~ rainbow)
-    point.r = value > 128 ? (value - 128) * 2 : 0;  // r[128] = 0, r[255] = 255
-    point.g = value < 128 ? 2 * value : 255 - ( (value - 128) * 2);  // g[0] = 0, g[128] = 255, g[255] = 0
-    point.b = value < 128 ? 255 - (2 * value) : 0;  // b[0] = 255, b[128] = 0
- 
+    switch (color_mode_)
+    {
+      case ColorMode::kBlueToRed:
+        // Blue (= min) -> Red (= max)
+        point.r = value;
+        point.g = 0;
+        point.b = 255 - value;
+        break;
+      case ColorMode::kGreenToMagenta:
+        // Green (= min) -> Magenta (= max)
+        point.r = value;
+        point.g = 255 - value;
+        point.b = value;
+        break;
+      case ColorMode::kWhiteToRed:
+        // White (= min) -> Red (= max)
+        point.r = 255;
+        point.g = 255 - value;
+        point.b = 255 - value;
+        break;
+      case ColorMode::kGrayOrRed:
+        // Grey (< 128) / Red (> 128)
+        if (value > 128)
+        {
+          point.r = 255;
+          point.g = 0;
+          point.b = 0;
+        }
+        else
+        {
+          point.r = 128;
+          point.g = 128;
+          point.b = 128;
+        }
+        break;
+      default:
+        // Blue -> Green -> Red (~ rainbow)
+        point.r = value > 128 ? (value - 128) * 2 : 0;  // r[128] = 0, r[255] = 255
+        point.g = value < 128 ? 2 * value : 255 - ( (value - 128) * 2);  // g[0] = 0, g[128] = 255, g[255] = 0
+        point.b = value < 128 ? 255 - (2 * value) : 0;  // b[0] = 255, b[128] = 0
+    } 
   }
+}
 
+std::istream& operator>>(std::istream& in, PointCloudExtractor::ColorMode& color_mode)
+{
+  using ColorMode = PointCloudExtractor::ColorMode;
+
+  std::string token;
+  in >> token;
+  if (token == "blue2red")
+    color_mode = ColorMode::kBlueToRed;
+  else if (token == "green2magenta")
+    color_mode = ColorMode::kGreenToMagenta;
+  else if (token == "white2red")
+    color_mode = ColorMode::kWhiteToRed;
+  else if (token == "gray/red")
+    color_mode = ColorMode::kGrayOrRed;
+  else if (token == "rainbow")
+    color_mode = ColorMode::kRainbow;
+  else
+      in.setstate(std::ios_base::failbit);
+  return in;
+}
+
+std::ostream& operator<<(std::ostream& out, const PointCloudExtractor::ColorMode& color_mode)
+{
+  using ColorMode = PointCloudExtractor::ColorMode;
+
+  if (color_mode == ColorMode::kBlueToRed)
+    out << "blue2red";
+  else if (color_mode == ColorMode::kGreenToMagenta)
+    out << "green2magenta";
+  else if (color_mode == ColorMode::kWhiteToRed)
+    out << "white2red";
+  else if (color_mode == ColorMode::kGrayOrRed)
+    out << "gray/red";
+  else if (color_mode == ColorMode::kRainbow)
+    out << "rainbow";
+  else
+    out.setstate(std::ios_base::failbit);
+
+  return out;
 }
 
 } // infuse_debug_tools

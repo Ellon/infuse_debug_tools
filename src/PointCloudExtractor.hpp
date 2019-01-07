@@ -28,9 +28,17 @@ public:
   typedef ColorHandler::Ptr ColorHandlerPtr;
   typedef ColorHandler::ConstPtr ColorHandlerConstPtr;
 
+  enum class ColorMode {
+    kBlueToRed,
+    kGreenToMagenta,
+    kWhiteToRed,
+    kGrayOrRed,
+    kRainbow
+  };
+
 public:
-  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false);
-  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs = false);
+  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false, ColorMode color_mode = ColorMode::kRainbow);
+  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs = false, ColorMode color_mode = ColorMode::kRainbow);
   void Extract();
 
 private:
@@ -83,8 +91,14 @@ private:
   bool compute_min_max_z_;
   //! Store min and max z used to create color lookup table
   double min_z_, max_z_;
+  //! Color mode used when dumping png views
+  ColorMode color_mode_;
 
 };
+
+// Functions used to convert color modes from/to streams
+std::istream& operator>>(std::istream& in, PointCloudExtractor::ColorMode& color_mode);
+std::ostream& operator<<(std::ostream& out, const PointCloudExtractor::ColorMode& color_mode);
 
 } // infuse_debug_tools
 

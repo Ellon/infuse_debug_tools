@@ -29,8 +29,8 @@ public:
   typedef ColorHandler::ConstPtr ColorHandlerConstPtr;
 
 public:
-  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false, bool debug_mode = false);
-  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs = false, bool debug_mode = false);
+  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs = false);
+  PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs = false);
   void Extract();
 
 private:
@@ -79,12 +79,6 @@ private:
   double point_size_;
   //! Directory where to put the png files (set on Extract())
   boost::filesystem::path png_dir_;
-  //! Store if we want to run in debug mode
-  bool debug_mode_;
-  //! Directory where to put the debug files (set on Extract())
-  boost::filesystem::path debug_dir_;
-  //! Stream used to write min max debug data
-  std::ofstream debug_min_max_ofs_;
   //! Store if we want to compute min max z
   bool compute_min_max_z_;
   //! Store min and max z used to create color lookup table

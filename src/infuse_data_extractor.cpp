@@ -93,7 +93,6 @@ int main(int argc, char **argv)
     all.add(extraction).add(velodyne).add(cam).add(odom).add(tokamak).add(gps).add(backend);
     all.add_options()
       ("help,h", "Display help")
-      ("debug,d", bpo::bool_switch(), "Run in debug mode (extract debug data, print debug messages, etc...)")
       ;
 
     // Only the options that should be visible to the user
@@ -181,16 +180,14 @@ int main(int argc, char **argv)
           vm["velodyne-topic"].as<std::string>(),
           vm["velodyne-png-min-z"].as<double>(),
           vm["velodyne-png-max-z"].as<double>(),
-          vm["velodyne-png"].as<bool>(),
-          vm["debug"].as<bool>()
+          vm["velodyne-png"].as<bool>()
           );
       } else {
         cloud_extractor_ptr = std::make_unique<infuse_debug_tools::PointCloudExtractor>(
           velodyne_output_dir.string(),
           vm["bags"].as<std::vector<std::string>>(),
           vm["velodyne-topic"].as<std::string>(),
-          vm["velodyne-png"].as<bool>(),
-          vm["debug"].as<bool>()
+          vm["velodyne-png"].as<bool>()
           );
       }
       cloud_extractor_ptr->Extract();

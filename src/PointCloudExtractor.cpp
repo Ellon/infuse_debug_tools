@@ -17,7 +17,7 @@ namespace bfs = boost::filesystem;
 
 namespace infuse_debug_tools {
 
-PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs, bool debug_mode)
+PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, bool extract_pngs)
   : output_dir_{output_dir},
     bag_paths_{bag_paths},
     point_cloud_topic_{point_cloud_topic},
@@ -28,13 +28,12 @@ PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const st
     extract_pngs_{extract_pngs},
     pcl_viewer_{nullptr},
     point_size_{1},
-    debug_mode_{debug_mode},
     compute_min_max_z_{true},
     min_z_{0},
     max_z_{0}
 {}
 
-PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs, bool debug_mode)
+PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const std::vector<std::string> &bag_paths, const std::string &point_cloud_topic, double min_z, double max_z, bool extract_pngs)
   : output_dir_{output_dir},
     bag_paths_{bag_paths},
     point_cloud_topic_{point_cloud_topic},
@@ -45,7 +44,6 @@ PointCloudExtractor::PointCloudExtractor(const std::string &output_dir, const st
     extract_pngs_{extract_pngs},
     pcl_viewer_{nullptr},
     point_size_{1},
-    debug_mode_{debug_mode},
     compute_min_max_z_{false},
     min_z_{min_z},
     max_z_{max_z}
@@ -102,8 +100,6 @@ void PointCloudExtractor::Extract()
   metadata_dir_ = lambda_create_subdir(output_dir_, "metadata");
   if (extract_pngs_)
     png_dir_      = lambda_create_subdir(output_dir_, "pngs");
-  if (debug_mode_)
-    debug_dir_      = lambda_create_subdir(output_dir_, "debug");
 
   // Write dataformat file. The rationalle of keeping the dataformat separated
   // from the metadata is that this way it is possible to associate the cloud
@@ -111,6 +107,8 @@ void PointCloudExtractor::Extract()
   std::ofstream dataformat_ofs((output_dir_ / "dataformat.txt").string());
   {
     std::vector<std::string> entries{ASN1BitstreamLogger::GetPointcloudLogEntries()};
+    // Add coordinates min max to the entries
+    entries.insert(entries.end(), {"min_x", "max_x", "min_y", "max_y", "min_z", "max_z"});
     unsigned int index = 1;
     for (auto entry : entries) {
       dataformat_ofs << "# " << std::setw(2) << index << " - " << entry << '\n';
@@ -169,12 +167,6 @@ void PointCloudExtractor::Extract()
     pcl_viewer_->initCameraParameters ();
   }
 
-  // Setup debug streams if needed
-  if (debug_mode_) {
-    debug_min_max_ofs_.open((debug_dir_ / "min_max.txt").string());
-    debug_min_max_ofs_ << "# min_x max_x min_y max_y min_z max_z\n";
-  }
-
   // Setup progress display
   std::cout << "Extracting " << n_point_clouds << " point clouds " << (extract_pngs_? "and PNG views " : "") << "to " << output_dir_.string() << "/...";
   boost::progress_display show_progress( n_point_clouds );
@@ -201,9 +193,6 @@ void PointCloudExtractor::Extract()
       if (extract_pngs_) {
         pcl_viewer_->close();
       }
-      if (debug_mode_) {
-        debug_min_max_ofs_.close();
-      }
       throw;
     }
 
@@ -214,10 +203,6 @@ void PointCloudExtractor::Extract()
 
   if (extract_pngs_) {
     pcl_viewer_->close();
-  }
-
-  if (debug_mode_) {
-    debug_min_max_ofs_.close();
   }
 
 }
@@ -260,11 +245,12 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
   PointCloud::Ptr pcl_cloud_ptr(new PointCloud());
   fromASN1SCC(*asn1_pointcloud_ptr_, *pcl_cloud_ptr);
 
+  // Extract sensor frame in fixed frame from metadata
+  Eigen::Affine3f T_fixed_sensor = ComputeSensorPoseInFixedFrame(*asn1_pointcloud_ptr_);
   // Fill sensor pose information. This info ends up in the VIEWPOINT field of
   // the pcd file, and it's used to position the cloud on pcl_viewer with it
   // is used with multiple input pcds. Note that it is stored using float
   // values.
-  Eigen::Affine3f T_fixed_sensor = ComputeSensorPoseInFixedFrame(*asn1_pointcloud_ptr_);
   SetCloudSensorPose(T_fixed_sensor, *pcl_cloud_ptr);
 
   // TODO: Test if the transformation is rigid. Something like the commented-
@@ -286,6 +272,32 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
   bool pcd_binary_mode = true;
   pcl::io::savePCDFile( pcd_path.string(), *pcl_cloud_ptr, pcd_binary_mode );
 
+  // Put the cloud in the fixed frame, so min and max will be absolute. Note
+  // that this is done AFTER saving the .pcd file, so it has the point cloud
+  // as it was stored in the message.
+  pcl::transformPointCloud(*pcl_cloud_ptr, *pcl_cloud_ptr, T_fixed_sensor);
+  SetCloudSensorPose(Eigen::Affine3f::Identity(), *pcl_cloud_ptr);
+
+  // Log metadata in the common file
+  ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, metadata_ofs_);
+  // Log min-max coordinates in the metadata as well
+  float min_x = 0, max_x = 0, min_y = 0, max_y = 0, min_z = 0, max_z = 0;
+  try {
+    std::tie(min_x, max_x, min_y, max_y, min_z, max_z) = FindMinMax(*pcl_cloud_ptr);
+  } catch (std::out_of_range) {
+    std::cerr << "Warning: Found empty cloud (number " << pcd_count_ << ") when computing min max coordinates\n";
+  }
+  metadata_ofs_ << min_x << " " << max_x << " " << min_y << " " << max_y << " " << min_z << " " << max_z;
+  metadata_ofs_ << '\n';
+
+  // Log the same metadata of this cloud in a separated file
+  bfs::path metadata_path = metadata_dir_ / bfs::path(pcd_path).filename().replace_extension(".txt");
+  std::ofstream pcd_metadata_ofs(metadata_path.string());
+  ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, pcd_metadata_ofs);
+  pcd_metadata_ofs << min_x << " " << max_x << " " << min_y << " " << max_y << " " << min_z << " " << max_z;
+  pcd_metadata_ofs.close();
+
+
   // Handle PNG extraction
   if (extract_pngs_) {
     // Get a version of the point cloud that can be colored
@@ -293,28 +305,21 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
     pcl::copyPointCloud(*pcl_cloud_ptr, *pcl_colored_cloud_ptr);
 
     // Compute useful transformations
-    // Sensor frame
-    Eigen::Affine3f T_world_sensor;
-    T_world_sensor = pcl_colored_cloud_ptr->sensor_orientation_;
-    T_world_sensor.translation() = pcl_colored_cloud_ptr->sensor_origin_.head<3>();
     // Sensor frame that considers only yaw
-    Eigen::Affine3f T_world_sensoryaw;
-    T_world_sensoryaw = Eigen::AngleAxis<float>(ASN1BitstreamLogger::Yaw(pcl_colored_cloud_ptr->sensor_orientation_), Eigen::Vector3f::UnitZ());
-    T_world_sensoryaw.translation() = pcl_colored_cloud_ptr->sensor_origin_.head<3>();
-    // Camera position, behind the robot and considering only sensor yaw
+    Eigen::Affine3f T_fixed_sensoryaw;
+    T_fixed_sensoryaw = Eigen::AngleAxis<float>(ASN1BitstreamLogger::Yaw(Eigen::Quaternionf(T_fixed_sensor.rotation())), Eigen::Vector3f::UnitZ());
+    T_fixed_sensoryaw.translation() = T_fixed_sensor.translation();
+    // Camera pose, behind the robot and considering only sensor yaw
     // (makes camera less shaky). Note that since the velodyne is mounted
     // facing backwards, we preform a positive translation on sensor's X axis
-    Eigen::Affine3f T_world_camera = T_world_sensoryaw * Eigen::Translation<float,3>(45,0,20);
+    Eigen::Affine3f T_fixed_camera = T_fixed_sensoryaw * Eigen::Translation<float,3>(45,0,20);
 
     // Add a new at current sensor pose. This creates a trail of frames
-    pcl_viewer_->addCoordinateSystem (1.0, T_world_sensor, "sensor_frame");
+    pcl_viewer_->addCoordinateSystem (1.0, T_fixed_sensor, "sensor_frame");
     // Or alternativaly we can update the coordinate system, w/o leaving the trail
-    // pcl_viewer_->updateCoordinateSystemPose ("sensor_frame", T_world_sensor);
+    // pcl_viewer_->updateCoordinateSystemPose ("sensor_frame", T_fixed_sensor);
 
-    // Put the colored cloud in the world frame to have absolute values
-    pcl::transformPointCloud(*pcl_colored_cloud_ptr, *pcl_colored_cloud_ptr, T_world_sensor);
-    SetCloudSensorPose(Eigen::Affine3f::Identity(), *pcl_colored_cloud_ptr);
-
+    // Fill RGB values for each point
     ColorPointCloud(*pcl_colored_cloud_ptr);
 
     // Remove previous point cloud
@@ -327,12 +332,12 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
     pcl_viewer_->setPointCloudRenderingProperties (pcl::visualization::PCL_VISUALIZER_POINT_SIZE, point_size_, "sample cloud");
 
     // Put the camera behind the robot, looking at the sensor origin, and upwards
-    pcl_viewer_->setCameraPosition (T_world_camera.translation()[0], // pos_x
-                                    T_world_camera.translation()[1], // pos_y
-                                    T_world_camera.translation()[2], // pos_z
-                                    T_world_sensoryaw.translation()[0], // view_x
-                                    T_world_sensoryaw.translation()[1], // view_y
-                                    T_world_sensoryaw.translation()[2], // view_z
+    pcl_viewer_->setCameraPosition (T_fixed_camera.translation()[0], // pos_x
+                                    T_fixed_camera.translation()[1], // pos_y
+                                    T_fixed_camera.translation()[2], // pos_z
+                                    T_fixed_sensoryaw.translation()[0], // view_x
+                                    T_fixed_sensoryaw.translation()[1], // view_y
+                                    T_fixed_sensoryaw.translation()[2], // view_z
                                     0,  // up_x
                                     0,  // up_y
                                     1); // up_z
@@ -344,32 +349,6 @@ void PointCloudExtractor::ProcessPointCloud(const infuse_msgs::asn1_bitstream::P
     // Save png
     bfs::path png_path = png_dir_ / bfs::path(pcd_path).filename().replace_extension(".png");
     pcl_viewer_->saveScreenshot(png_path.string());
-  }
-
-  // Log metadata in the common file
-  ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, metadata_ofs_);
-  metadata_ofs_ << '\n';
-
-  // Log metadata of this cloud in a separated file
-  bfs::path metadata_path = metadata_dir_ / bfs::path(pcd_path).filename().replace_extension(".txt");
-  std::ofstream pcd_metadata_ofs(metadata_path.string());
-  ASN1BitstreamLogger::LogPointcloud(*asn1_pointcloud_ptr_, pcd_metadata_ofs);
-  pcd_metadata_ofs.close();
-
-  if (debug_mode_) {
-    // Put the cloud in the world frame, so min and max will be absolute
-    // Note that this changes the point cloud contents
-    pcl::transformPointCloud(*pcl_cloud_ptr, *pcl_cloud_ptr, T_fixed_sensor);
-    SetCloudSensorPose(Eigen::Affine3f::Identity(), *pcl_cloud_ptr);
-
-    // Find min max xyz
-    float min_x = 0, max_x = 0, min_y = 0, max_y = 0, min_z = 0, max_z = 0;
-    try {
-      std::tie(min_x, max_x, min_y, max_y, min_z, max_z) = FindMinMax(*pcl_cloud_ptr);
-    } catch (std::out_of_range) {
-      std::cerr << "Warning: Found empty cloud (number " << pcd_count_ << ") when computing min max coordinates\n";
-    }
-    debug_min_max_ofs_ << min_x << " " << max_x << " " << min_y << " " << max_y << " " << min_z << " " << max_z << "\n";
   }
 
   // Increment pcd counter

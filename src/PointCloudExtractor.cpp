@@ -165,7 +165,7 @@ void PointCloudExtractor::Extract()
   // Create the pcl viewer instance if needed
   if (extract_pngs_) {
     pcl_viewer_.reset(new pcl::visualization::PCLVisualizer ("3D Viewer"));
-    pcl_viewer_->setBackgroundColor (0, 0, 0);
+    pcl_viewer_->setBackgroundColor (255, 255, 255);
     pcl_viewer_->initCameraParameters ();
   }
 

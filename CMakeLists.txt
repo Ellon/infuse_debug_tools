@@ -3,6 +3,9 @@ project(infuse_debug_tools)
 
 set (CMAKE_CXX_STANDARD 14)
 
+## Set options
+OPTION(WITH_XIMGPROC "Compilation avec XImgProc (module OpenCV contrib)" ON)
+
 ## Find catkin and any catkin packages
 find_package(catkin REQUIRED COMPONENTS roscpp infuse_msgs std_msgs message_generation tf2_ros rosbag_storage infuse_novatel_gps_msgs)
 
@@ -34,7 +37,9 @@ add_library(infuse_debug_tools
 	src/PointCloudExtractor.cpp
 	src/PoseExtractor.cpp
 	src/ImagePairExtractor.cpp
+        src/ImagePairMatcher.cpp
 	src/GpsExtractor.cpp
+        src/asn1_bitstream_to_disparity_image.cpp
 )
 target_include_directories(infuse_debug_tools
 	PUBLIC
@@ -145,6 +150,25 @@ target_link_libraries(infuse_data_extractor
 	infuse_debug_tools
 )
 
+## infuse_stereo_matching
+add_executable(infuse_stereo_matching
+        src/infuse_stereo_matching.cpp
+)
+target_include_directories(infuse_stereo_matching
+        PUBLIC
+        ${Boost_INCLUDE_DIRS}
+        ${OpenCV_INCLUDE_DIRS}
+)
+target_link_libraries(infuse_stereo_matching
+        ${Boost_LIBRARIES}
+        ${OpenCV_LIBRARIES}
+        infuse_debug_tools
+)
+
+if(WITH_XIMGPROC)
+    add_definitions(-DWITH_XIMGPROC)
+endif()
+
 ## asn1_bitstream_to_image
 add_executable(asn1_bitstream_to_image_node src/asn1_bitstream_to_img.cpp)
 target_include_directories(asn1_bitstream_to_image_node
@@ -158,4 +182,18 @@ target_link_libraries(asn1_bitstream_to_image_node
 	infuse_asn1_types::infuse_asn1_types
 	infuse_asn1_conversions::base_conversions
 	#infuse_asn1_conversions::ros_conversions
+)
+
+## asn1_bitstream_to_disparity_image
+add_executable(asn1_bitstream_to_disparity_image_node src/asn1_bitstream_to_disparity_image.cpp)
+target_include_directories(asn1_bitstream_to_disparity_image_node
+        PUBLIC
+        ${catkin_INCLUDE_DIRS}
+)
+target_link_libraries(asn1_bitstream_to_disparity_image_node
+        ${catkin_LIBRARIES}
+        infuse_debug_tools
+        infuse_asn1_types::infuse_asn1_types
+        infuse_asn1_conversions::base_conversions
+        ${OpenCV_LIBRARIES}
 )

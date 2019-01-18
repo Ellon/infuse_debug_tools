@@ -53,7 +53,7 @@ axes[1].grid()
 
 # plotting time between succesive frames
 fig1, axes = plt.subplots(3,1, sharex=True, sharey=False)
-axes[0].plot(, (frontRightStamps - frontLeftStamps) / 1000.0, label="front stamp difference (right-left)")
+axes[0].plot((frontLeftStamps - t0) / 1000000.0, (frontRightStamps - frontLeftStamps) / 1000.0, label="front stamp difference (right-left)")
 axes[0].legend(loc="upper right")
 axes[0].set_xlabel("left image stamp (s)")
 axes[0].set_ylabel("desync time (ms)")

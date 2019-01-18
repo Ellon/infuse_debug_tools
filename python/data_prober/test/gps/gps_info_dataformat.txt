@@ -1,6 +1,0 @@
-#  1 - gps_info_timestamp
-#  2 - solution_status
-#  3 - position_type
-#  4 - easting_sigma
-#  5 - northing_sigma
-#  6 - height_sigma

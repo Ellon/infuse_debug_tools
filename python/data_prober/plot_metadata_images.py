@@ -5,10 +5,13 @@ from ImageSynchronizer import ImageSynchronizer
 import numpy as np
 import matplotlib.pyplot as plt
 
-sync = ImageSynchronizer()
+sync = ImageSynchronizer("test/")
 sync.intrinsic_synchro()
 sync.extrinsic_synchro()
-sync.export_extrinsic_synchronized_index_file("test.txt")
+# sync.export_extrinsic_synchronized_index_file("synchronized_cam_indexes.txt")
+print("Uncomment line 11 to generate syncronised image indexes file. See ImageSynchronizer for code details.")
+
+
 # Front cam
 frontLeftStamps  = sync.dataFrontLeft.get_nparray('timestamp')
 frontRightStamps = sync.dataFrontRight.get_nparray('timestamp')
@@ -37,7 +40,6 @@ axes[0].set_xlabel("image index")
 axes[0].set_ylabel("time (s)")
 axes[0].tick_params(axis='both',which='both')
 axes[0].grid()
-fig0.savefig("test.pdf", bbox_inches='tight')
 
 lMin = min([len(frontLeftStamps), len(rearLeftStamps), len(navLeftStamps)])
 axes[1].plot((rearLeftStamps[:lMin] - frontLeftStamps[:lMin]) / 1000000.0, label="(rear - front) left stamp")
@@ -94,8 +96,6 @@ axes[2].set_xlabel("left image stamp (s)")
 axes[2].set_ylabel("period (s)")
 axes[2].tick_params(axis='both',which='both')
 axes[2].grid()
-
-
 
 plt.show()
 # plt.show(block=False)

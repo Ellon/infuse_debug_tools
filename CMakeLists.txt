@@ -37,9 +37,8 @@ add_library(infuse_debug_tools
 	src/PointCloudExtractor.cpp
 	src/PoseExtractor.cpp
 	src/ImagePairExtractor.cpp
-        src/ImagePairMatcher.cpp
+    src/ImagePairMatcher.cpp
 	src/GpsExtractor.cpp
-        src/asn1_bitstream_to_disparity_image.cpp
 )
 target_include_directories(infuse_debug_tools
 	PUBLIC

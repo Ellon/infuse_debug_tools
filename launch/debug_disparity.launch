@@ -1,0 +1,14 @@
+<launch>
+
+  <!-- Arguments -->
+  <arg name="bag" doc="absolute path to bag to be replayed"/>
+  <arg name="topics_to_connect" doc="images pair topic to connect"/>
+
+  <!-- Nodes execution -->
+  <node pkg="rosbag" type="play" name="player" output="screen" args="$(arg bag) "/>
+
+  <node pkg="infuse_debug_tools" name="stereo_matching" type="stereo_matching_node" output="screen">
+    <param name="topics_to_connect" value="$(arg topics_to_connect)" />
+  </node>
+
+</launch>

@@ -20,7 +20,6 @@ class MetadataFormat:
     def parse_metadata_format_file(self, filename):
  
         formatFile = open(filename, "r")
-        
         for line in formatFile:
             self.dataFields.append(line.split()[3])
     

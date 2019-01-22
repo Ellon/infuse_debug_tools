@@ -49,30 +49,30 @@ int main(int argc, char **argv)
 
     bpo::options_description rect{"Stereo rectification specific options"};
     rect.add_options()
-      ("xratio", bpo::value<std::int16_t>()->default_value(1), "Front cam stereo pair topic")
-      ("yratio", bpo::value<std::int16_t>()->default_value(1), "File extension for the Front cam data")
-      ("scaling", bpo::value<std::double_t>()->default_value(0), "Nav cam stereo pair topic")
-      ("calibration_file_path", bpo::value<std::string>()->default_value(" "), "File extension for the Nav cam data")
+      ("xratio", bpo::value<std::int16_t>()->default_value(3), "Degradation ratio to be applied over the x-axis")
+      ("yratio", bpo::value<std::int16_t>()->default_value(3), "Degradation ratio to be applied over the y-axis")
+      ("scaling", bpo::value<std::double_t>()->default_value(0), "Free scaling parameter")
+      ("calibration_file_path", bpo::value<std::string>()->default_value(" "), "Path to the calibration file")
       ;
 
     bpo::options_description matcher{"Stereo matching specific options"};
     matcher.add_options()
         ("algorithm", bpo::value<std::int16_t>()->default_value(1), "Algorithm to be used")
         ("min_disparity", bpo::value<std::int16_t>()->default_value(0), "Minimum possible disparity value")
-        ("num_disparities", bpo::value<std::int16_t>()->default_value(192), "Maximum disparity minus minimum disparity")
+        ("num_disparities", bpo::value<std::int16_t>()->default_value(64), "Maximum disparity minus minimum disparity")
         ("block_size", bpo::value<std::int16_t>()->default_value(1), "Matched block size")
-        ("speckle_window_size", bpo::value<std::int16_t>()->default_value(80), "Maximum size of smooth disparity regions to consider their noise speckles and invalidate")
+        ("speckle_window_size", bpo::value<std::int16_t>()->default_value(50), "Maximum size of smooth disparity regions to consider their noise speckles and invalidate")
         ("speckle_range", bpo::value<std::int16_t>()->default_value(1), "Maximum disparity variation within each connected component")
         ("disp12_max_diff", bpo::value<std::int16_t>()->default_value(-1), "Maximum allowed difference (in integer pixel units) in the left-right disparity check")
-        ("pre_filter_cap", bpo::value<std::int16_t>()->default_value(45), "Truncation value for the prefiltered image pixels")
-        ("uniqueness_ratio", bpo::value<std::int16_t>()->default_value(10), "Margin in percentage by which the best (minimum) computed cost function value should win the second best value to consider the found match correct")
+        ("pre_filter_cap", bpo::value<std::int16_t>()->default_value(31), "Truncation value for the prefiltered image pixels")
+        ("uniqueness_ratio", bpo::value<std::int16_t>()->default_value(15), "Margin in percentage by which the best (minimum) computed cost function value should win the second best value to consider the found match correct")
 
         ("pre_filter_type", bpo::value<std::int16_t>()->default_value(cv::StereoBM::PREFILTER_NORMALIZED_RESPONSE), "Pre-Filter Type")
         ("pre_filter_size", bpo::value<std::int16_t>()->default_value(9), "Size of the Pre-Filter")
         ("texture_threshold", bpo::value<std::int16_t>()->default_value(10), "Texture Threshold")
 
-        ("P1", bpo::value<std::int16_t>()->default_value(20), "The first parameter controlling the disparity smoothness")
-        ("P2", bpo::value<std::int16_t>()->default_value(80), "The second parameter controlling the disparity smoothness")
+        ("P1", bpo::value<std::int16_t>()->default_value(0), "The first parameter controlling the disparity smoothness")
+        ("P2", bpo::value<std::int16_t>()->default_value(0), "The second parameter controlling the disparity smoothness")
         ("mode", bpo::value<std::int16_t>()->default_value(cv::StereoSGBM::MODE_SGBM), "Algorithm mode")
 
         ("use_filter", bpo::value<bool>()->default_value(false), "Set to true to filter the disparity map")

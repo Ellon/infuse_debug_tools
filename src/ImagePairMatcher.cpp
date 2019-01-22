@@ -365,8 +365,8 @@ void ImagePairMatcher::ProcessStereoMatching(asn1SccFramePair& in_frame_pair, as
 
     out_raw_disparity.data.msgVersion = array3D_Version;
     out_raw_disparity.data.channels = static_cast<asn1SccT_UInt32>(disparity.channels());
-    out_raw_disparity.data.rows = static_cast<asn1SccT_UInt32>(in_frame_pair.left.data.rows);
-    out_raw_disparity.data.cols = static_cast<asn1SccT_UInt32>(in_frame_pair.left.data.cols);
+    out_raw_disparity.data.rows = static_cast<asn1SccT_UInt32>(disparity.rows);
+    out_raw_disparity.data.cols = static_cast<asn1SccT_UInt32>(disparity.cols);
     out_raw_disparity.data.depth = static_cast<asn1SccArray3D_depth_t>(disparity.depth());
     out_raw_disparity.data.rowSize = disparity.step[0];
     out_raw_disparity.data.data.nCount =  static_cast<int>(out_raw_disparity.data.rows * out_raw_disparity.data.rowSize);
@@ -408,8 +408,8 @@ void ImagePairMatcher::ProcessStereoMatching(asn1SccFramePair& in_frame_pair, as
 
     out_color_disparity.data.msgVersion = array3D_Version;
     out_color_disparity.data.channels = static_cast<asn1SccT_UInt32>(filteredDisparityColor.channels());
-    out_color_disparity.data.rows = static_cast<asn1SccT_UInt32>(in_frame_pair.left.data.rows);
-    out_color_disparity.data.cols = static_cast<asn1SccT_UInt32>(in_frame_pair.left.data.cols);
+    out_color_disparity.data.rows = static_cast<asn1SccT_UInt32>(filteredDisparityColor.rows);
+    out_color_disparity.data.cols = static_cast<asn1SccT_UInt32>(filteredDisparityColor.cols);
     out_color_disparity.data.depth = static_cast<asn1SccArray3D_depth_t>(filteredDisparityColor.depth());
     out_color_disparity.data.rowSize = filteredDisparityColor.step[0];
     out_color_disparity.data.data.nCount =  static_cast<int>(out_color_disparity.data.rows * out_color_disparity.data.rowSize);
@@ -424,7 +424,7 @@ void ImagePairMatcher::ProcessStereoMatching(asn1SccFramePair& in_frame_pair, as
         for (int y = 0; y<disparity.cols; y++)
         {
             // Accesssing values of each pixel
-            if (disparity.at<uchar>(x, y) != 0)
+            if ((disparity.at<int16_t>(x, y)/16) > 0)
                 nb_paired += 1;
         }
     }
